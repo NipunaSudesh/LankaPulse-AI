@@ -1,0 +1,122 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-primary: var(--color-primary);
+  --color-primary-light: var(--color-primary-light);
+  --color-accent: var(--color-accent);
+
+  --color-light-cyan: var(--color-light-cyan);
+  --color-light-blue: var(--color-light-blue);
+  --color-light-green: var(--color-light-green);
+
+  --color-dark-background: var(--color-dark-background);
+  --color-dark-surface: var(--color-dark-surface);
+  --color-dark-border: var(--color-dark-border);
+  --color-dark-card: var(--color-dark-card);
+
+  --color-dark-text-main: var(--color-dark-text);
+  --color-dark-text-muted: var(--color-dark-text-muted);
+
+  --color-background: var(--color-background);
+  --color-surface: var(--color-surface);
+  --color-border: var(--color-border);
+  --color-text-main: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+
+  --color-success: var(--color-success);
+  --color-danger: var(--color-danger);
+  --color-warning: var(--color-warning);
+--color-text-green-light: var(--color-text-green-light);
+  --color-text-green-dark: var(  --color-text-green-dark);
+}
+
+:root {
+  /* Primary Brand */
+  --color-primary: #0000e6;
+  --color-primary-light: #4da6ff;
+
+  /* Main Accent */
+  --color-accent: #00e6b8;
+
+  /* Brilliant / Neon Colors */
+  --color-light-cyan: #00ffff;
+  --color-light-blue: #4169ff;
+  --color-light-green: #00ff9d;
+  /* Status Colors */
+  --color-success: #00c853;
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+
+  /* Light Theme */
+  --color-background: #f8fafc;
+  --color-surface: #ffffff;
+  --color-border: #e2e8f0;
+  --color-text: #0f172a;
+  --color-text-muted: #3a424e;
+
+  /* Dark Theme#0b1d3a */
+  --color-dark-background: #020617;
+  --color-dark-surface: #0f172a;
+  --color-dark-border: #1e293b;
+  --color-dark-text: #f8fafc;
+  --color-dark-text-muted: #94a3b8;
+  --color-dark-card: #0b1d3a;
+
+    --color-neon-cyan: #00ffff;
+  --color-neon-blue: #4169ff;
+  --color-neon-green: #00ff9d;
+  --color-text-green-light: #05c57b;
+  --color-text-green-dark: #00e6b8;
+}
+
+/* Base and utilities */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.dark body {
+  background: var(--color-dark-background);
+  color: var(--color-dark-text);
+}
+
+.brand-gradient {
+  background: linear-gradient(
+    90deg,
+    var(--color-neon-cyan),
+    var(--color-neon-blue),
+    var(--color-neon-green)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+@layer components {
+  .container-custom {
+    width: 100%;
+    max-width: 90rem;
+    margin-inline: auto;
+    padding-inline: 1.5rem;
+  }
+
+  @media (min-width: 768px) {
+    .container-custom {
+      padding-inline: 2rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .container-custom {
+      padding-inline: 3rem;
+    }
+  }
+}
