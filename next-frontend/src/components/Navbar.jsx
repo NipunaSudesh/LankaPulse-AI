@@ -13,7 +13,7 @@ const LINKS = [
   { href: '/', label: 'Latest News' },
   { href: '/categories', label: 'Categories' },
   { href: '/trending', label: 'Trending' },
-  { href: '/sources', label: 'Sources' },
+  { href: '/AboutUs', label: 'About Us' },
 ];
 
 export default function Navbar() {
