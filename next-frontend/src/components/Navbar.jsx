@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
+import Image from "next/image";
 import {
   FiSun,  FiMoon,  FiSearch, FiMenu, FiX,  FiShield,} from 'react-icons/fi';
 
@@ -53,8 +54,15 @@ const toggleTheme = () => {
       <div className="container-custom flex h-16 items-center justify-between gap-4">
 
         {/* Brand */}
-        <Link href="/" className="group shrink-0">
-          <span className="brand-gradient text-xl font-extrabold tracking-tight transition-all duration-300 group-hover:drop-shadow-[0_0_16px_rgba(0,255,255,0.5)]">
+        <Link href="/" className="group shrink-0 flex justify-center items-center ">
+                <Image
+          src="/LP_logo.png"
+          alt="LankaPulse AI logo"
+          width={60}
+          height={40}
+          priority
+        />
+          <span className=" brand-gradient text-xl font-extrabold tracking-tight transition-all duration-300 group-hover:drop-shadow-[0_0_16px_rgba(0,255,255,0.5)]">
             LankaPulse AI
           </span>
         </Link>
