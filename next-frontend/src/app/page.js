@@ -1,5 +1,5 @@
 
-import Categories from "@/components/Categories";
+import Categories from "@/components/CategorySection";
 import HomeHero from "../components/HomeHero";
 
 export default function HomePage() {

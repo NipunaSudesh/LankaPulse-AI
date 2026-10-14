@@ -7,7 +7,7 @@ export default function Header({
     <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+        <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
           {title}
         </h1>
 

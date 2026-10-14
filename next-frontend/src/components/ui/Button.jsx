@@ -1,8 +1,5 @@
 'use client';
 
-/* =========================================================
-   BUTTON VARIANTS
-   ========================================================= */
 const VARIANTS = {
   primary:
     'bg-primary text-white hover:bg-accent hover:text-dark-background shadow-sm hover:shadow-[0_4px_16px_rgba(0,230,184,0.35)] dark:bg-primary dark:text-white dark:hover:bg-accent dark:hover:text-dark-background',
