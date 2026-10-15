@@ -220,7 +220,7 @@ export default function Categories() {
         </p>
 
         <a
-          href="/news"
+          href="/categories"
           className="group inline-flex w-fit items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-text-green-light transition-colors hover:text-primary"
         >
           View all news
