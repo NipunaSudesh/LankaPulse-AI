@@ -2,13 +2,13 @@
 
 const VARIANTS = {
   primary:
-    'bg-primary text-white hover:bg-accent hover:text-dark-background shadow-sm hover:shadow-[0_4px_16px_rgba(0,230,184,0.35)] dark:bg-primary dark:text-white dark:hover:bg-accent dark:hover:text-dark-background',
+    'group/btn inline-flex min-h-12 items-center justify-center gap-3 rounded-xl bg-[#00e6b8] px-6 py-3 text-sm font-bold text-[#020617] shadow-lg shadow-[#00e6b8]/15 transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#42f5d0] hover:shadow-xl hover:shadow-[#00e6b8]/25',
 
   secondary:
     'bg-slate-100 text-slate-800 border border-slate-200 hover:bg-accent hover:text-dark-background hover:border-accent dark:bg-dark-surface dark:text-dark-text-main dark:border-dark-border dark:hover:bg-accent dark:hover:text-dark-background dark:hover:border-accent',
 
   outline:
-    'border border-primary bg-transparent text-primary hover:border-accent hover:bg-accent hover:text-dark-background dark:border-primary-light dark:text-primary-light dark:hover:border-accent dark:hover:bg-accent dark:hover:text-dark-background',
+    'inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-6 py-3 text-sm font-semibold text-white backdrop-blur-md transition-all duration-300 hover:border-[#00e6b8]/40 hover:bg-white/[0.08] hover:text-[#00e6b8] ',
 
   success:
     'bg-success text-white hover:bg-success/90 shadow-sm hover:shadow-[0_4px_16px_rgba(0,200,83,0.35)] dark:bg-success dark:text-white',

@@ -1,16 +1,19 @@
+
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
-import Button from "./ui/Button";
+import React, { useRef, useState } from "react";
 import CategoriesCard from "./ui/CategoriesCard";
-import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import Header from "./ui/Header";
+import {
+  FaChevronLeft,
+  FaChevronRight,
+  FaArrowRight,
+} from "react-icons/fa";
 import { Swiper, SwiperSlide } from "swiper/react";
-import { Navigation, Pagination, A11y, Autoplay } from "swiper/modules";
+import { Pagination, A11y, Autoplay } from "swiper/modules";
 
 import "swiper/css";
-import "swiper/css/navigation";
 import "swiper/css/pagination";
-import Header from "./ui/Header";
 
 const categories = [
   {
@@ -76,92 +79,158 @@ const categories = [
 ];
 
 export default function Categories() {
-  const prevRef = useRef(null);
-  const nextRef = useRef(null);
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  if (!isMounted) {
-    return (
-      <section className="mt-12 flex flex-col ">
-        <div className="flex items-center justify-between">
-          <Header
-            title="Categories"
-            description="Explore news by categories"
-          />
-        </div>
-        <div className="w-full h-48 bg-muted/20 animate-pulse rounded-xl" />
-      </section>
-    );
-  }
+  const swiperRef = useRef(null);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   return (
-    <section className="mt-12 flex flex-col">
-      <div className="flex items-center justify-between">
-        <Header
-          title="Categories"
-          description="Explore news by categories"
-        />
+    <section
+      id="categories"
+      aria-labelledby="categories-heading"
+      className="relative isolate mt-10 overflow-hidden rounded-3xl border border-border bg-surface px-4 py-4 text-text-main transition-colors duration-300 sm:mt-10 sm:px-7 sm:py-6 lg:px-10 lg:py-8 "
+    >
+      {/* Decorative background */}
+      <div className="categories-glow pointer-events-none absolute -left-32 top-0 -z-10 h-72 w-72 rounded-full blur-[100px]" />
 
-        <div className="flex gap-2">
-          <Button
-            ref={prevRef}
-            type="button"
-            variant="outline"
-            aria-label="Previous categories"
-            className="!h-10 !w-10 !rounded-full !p-0"
-          >
-            <FaChevronLeft size={14} />
-          </Button>
+      <div className="categories-glow-secondary pointer-events-none absolute -right-32 bottom-0 -z-10 h-72 w-72 rounded-full blur-[100px]" />
 
-          <Button
-            ref={nextRef}
-            type="button"
-            variant="outline"
-            aria-label="Next categories"
-            className="!h-10 !w-10 !rounded-full !p-0"
-          >
-            <FaChevronRight size={14} />
-          </Button>
+      <div
+        aria-hidden="true"
+        className="categories-grid-overlay pointer-events-none absolute inset-0 -z-10"
+      />
+
+      {/* Section heading and carousel controls */}
+      <div className="mb-4 flex flex-col sm:flex-row sm:items-end sm:justify-between">
+        <div className="max-w-2xl">
+          <Header
+            sub="Discover the headlines"
+            title="Explore Categories"
+            description="From local headlines to global developments, discover the stories that matter to you."
+          />
+        </div>
+
+        <div className="flex items-center justify-between gap-4 sm:justify-end">
+          <div className="text-xs font-medium tracking-wide text-text-muted">
+            <span className="text-lg font-bold text-text-main">
+              {String(activeIndex + 1).padStart(2, "0")}
+            </span>
+
+            <span className="mx-2">/</span>
+
+            {String(categories.length).padStart(2, "0")}
+
+            <span className="ml-2">categories</span>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              aria-label="Previous categories"
+              onClick={() => swiperRef.current?.slidePrev()}
+              className="group flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background text-text-main transition-all duration-300 hover:border-accent hover:bg-accent hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              <FaChevronLeft
+                size={13}
+                className="transition-transform duration-300 group-hover:-translate-x-0.5"
+              />
+            </button>
+
+            <button
+              type="button"
+              aria-label="Next categories"
+              onClick={() => swiperRef.current?.slideNext()}
+              className="group flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background text-text-main transition-all duration-300 hover:border-accent hover:bg-accent hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              <FaChevronRight
+                size={13}
+                className="transition-transform duration-300 group-hover:translate-x-0.5"
+              />
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* Categories carousel */}
       <Swiper
-        modules={[Autoplay, Navigation, Pagination, A11y]}
-        onBeforeInit={(swiper) => {
-          swiper.params.navigation.prevEl = prevRef.current;
-          swiper.params.navigation.nextEl = nextRef.current;
+        modules={[Autoplay, Pagination, A11y]}
+        onSwiper={(swiper) => {
+          swiperRef.current = swiper;
         }}
-        navigation={{
-          prevEl: prevRef.current,
-          nextEl: nextRef.current,
+        onSlideChange={(swiper) => {
+          setActiveIndex(swiper.realIndex);
         }}
-        pagination={{ clickable: true }}
         autoplay={{
-          delay: 2500,
+          delay: 3500,
           disableOnInteraction: false,
           pauseOnMouseEnter: true,
         }}
-        loop={true}
-        speed={700}
+        loop
+        speed={650}
         spaceBetween={16}
-        slidesPerView={1}
+        slidesPerView={1.15}
         breakpoints={{
-          480: { slidesPerView: 2, spaceBetween: 16 },
-          768: { slidesPerView: 3, spaceBetween: 20 },
-          1024: { slidesPerView: 4, spaceBetween: 20 },
+          480: {
+            slidesPerView: 1.8,
+            spaceBetween: 16,
+          },
+          640: {
+            slidesPerView: 2.3,
+            spaceBetween: 18,
+          },
+          768: {
+            slidesPerView: 3,
+            spaceBetween: 20,
+          },
+          1024: {
+            slidesPerView: 3.5,
+            spaceBetween: 20,
+          },
+          1280: {
+            slidesPerView: 4,
+            spaceBetween: 22,
+          },
         }}
-        className="categories-swiper w-full !pb-12"
+        pagination={{
+          clickable: true,
+          dynamicBullets: true,
+        }}
+        a11y={{
+          prevSlideMessage: "Previous category",
+          nextSlideMessage: "Next category",
+        }}
+        className="categories-swiper !overflow-visible !pb-14"
       >
-        {categories.map((category) => (
-          <SwiperSlide key={category.name}>
-            <CategoriesCard category={category} />
+        {categories.map((category, index) => (
+          <SwiperSlide key={category.name} className="!h-auto">
+            <div
+              className="category-card-enter"
+              style={{
+                animationDelay: `${Math.min(index, 5) * 70}ms`,
+              }}
+            >
+              <CategoriesCard category={category} />
+            </div>
           </SwiperSlide>
         ))}
       </Swiper>
+
+      {/* Bottom information */}
+      <div className=" flex flex-col gap-3 border-t border-border  sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs leading-5 text-text-muted">
+          Your world, organized into stories that matter.
+        </p>
+
+        <a
+          href="/news"
+          className="group inline-flex w-fit items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-text-green-light transition-colors hover:text-primary"
+        >
+          View all news
+
+          <FaArrowRight
+            size={11}
+            className="transition-transform duration-300 group-hover:translate-x-1"
+          />
+        </a>
+      </div>
     </section>
   );
 }
