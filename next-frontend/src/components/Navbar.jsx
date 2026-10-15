@@ -30,6 +30,7 @@ export default function Navbar() {
 
   const [mounted, setMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -38,19 +39,23 @@ export default function Navbar() {
 
   useEffect(() => {
     setMenuOpen(false);
+    setSearchOpen(false);
   }, [pathname]);
 
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!menuOpen && !searchOpen) return;
 
     const handleKeyDown = (event) => {
-      if (event.key === "Escape") setMenuOpen(false);
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        setSearchOpen(false);
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
 
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [menuOpen]);
+  }, [menuOpen, searchOpen]);
 
   const isActive = (href) => {
     if (href === "/") return pathname === "/";
@@ -61,58 +66,68 @@ export default function Navbar() {
     event.preventDefault();
 
     const query = search.trim();
+
     if (!query) return;
 
     setMenuOpen(false);
+    setSearchOpen(false);
     router.push(`/search?q=${encodeURIComponent(query)}`);
   };
 
   const toggleTheme = () => {
     if (!mounted) return;
+
     setTheme(resolvedTheme === "dark" ? "light" : "dark");
+  };
+
+  const openMobileSearch = () => {
+    setMenuOpen(false);
+    setSearchOpen((open) => !open);
+  };
+
+  const openMobileMenu = () => {
+    setSearchOpen(false);
+    setMenuOpen((open) => !open);
   };
 
   return (
     <header className="sticky top-0 z-50">
-      {/* Ambient glow */}
+      {/* Ambient top glow */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/80 to-transparent" />
 
       <div className="border-b border-border/70 bg-background/85 shadow-lg shadow-black/[0.025] backdrop-blur-2xl dark:border-dark-border/70 dark:bg-dark-background/85">
         <div className="container-custom">
-          <div className="flex min-h-[76px] items-center justify-between gap-4">
+          <div className="flex min-h-[76px] items-center justify-between gap-2 sm:gap-4">
 
             {/* Brand */}
             <Link
               href="/"
               aria-label="LankaPulse AI home"
-              className="group flex shrink-0 items-center gap-2.5"
+              className="group flex shrink-0 items-center gap-2 sm:gap-2.5"
             >
               <div className="relative">
                 <div className="absolute -inset-1 rounded-2xl bg-gradient-to-br from-cyan-400/40 to-blue-600/40 opacity-0 blur-md transition duration-300 group-hover:opacity-100" />
 
-                <div className="relative overflow-hidden rounded-xl  bg-surface p-1 shadow-sm transition duration-300 group-hover:-translate-y-0.5 group-hover:border-cyan-400/60  dark:bg-dark-surface border border-primary/15 dark:border-light-cyan">
-                  <Image 
+                <div className="relative overflow-hidden rounded-xl border border-primary/15 bg-surface p-1 shadow-sm transition duration-300 group-hover:-translate-y-0.5 group-hover:border-cyan-400/60 dark:border-light-cyan dark:bg-dark-surface">
+                  <Image
                     src="/LP_logo.png"
                     alt="LankaPulse AI"
                     width={44}
                     height={44}
                     priority
-                    className="h-10 w-10 rounded-lg object-contain sm:h-11 sm:w-11"
+                    className="h-9 w-9 rounded-lg object-contain min-[401px]:h-10 min-[401px]:w-10 sm:h-11 sm:w-11"
                   />
                 </div>
               </div>
 
-              <div className="flex flex-col">
-                <span className="brand-gradient text-xl font-extrabold tracking-tight transition-all duration-300 group-hover:drop-shadow-[0_0_16px_rgba(0,255,255,0.5)]">
+              <div className="hidden min-[401px]:block">
+                <span className="brand-gradient whitespace-nowrap text-base font-extrabold tracking-tight transition-all duration-300 group-hover:drop-shadow-[0_0_16px_rgba(0,255,255,0.5)] sm:text-xl">
                   LankaPulse AI
-                  
                 </span>
-
               </div>
             </Link>
-            
 
-            {/* Desktop search */}
+            {/* Desktop Search */}
             <form
               onSubmit={handleSearch}
               role="search"
@@ -139,7 +154,7 @@ export default function Navbar() {
               </div>
             </form>
 
-            {/* Desktop navigation */}
+            {/* Desktop Navigation */}
             <nav
               aria-label="Main navigation"
               className="hidden items-center gap-1 xl:flex"
@@ -168,21 +183,21 @@ export default function Navbar() {
               })}
             </nav>
 
-            {/* Actions */}
-            <div className="flex shrink-0 items-center gap-2">
+            {/* Action Buttons */}
+            <div className="flex shrink-0 items-center gap-1.5 min-[401px]:gap-2">
 
-              {/* Mobile search */}
+              {/* Mobile Search Icon - separate from menu */}
               <button
                 type="button"
-                onClick={() => setMenuOpen((open) => !open)}
-                aria-label={menuOpen ? "Close menu" : "Open search and menu"}
-                aria-expanded={menuOpen}
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface text-text-main transition hover:border-cyan-500/50 hover:text-cyan-500 dark:border-dark-border dark:bg-dark-surface dark:text-dark-text-main md:hidden"
+                onClick={openMobileSearch}
+                aria-label={searchOpen ? "Close search" : "Open search"}
+                aria-expanded={searchOpen}
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface text-text-main transition-all duration-300 hover:border-cyan-500/50 hover:bg-cyan-500/10 hover:text-cyan-500 dark:border-dark-border dark:bg-dark-surface dark:text-dark-text-main min-[401px]:h-10 min-[401px]:w-10 md:hidden"
               >
-                {menuOpen ? <FiX size={19} /> : <FiSearch size={18} />}
+                {searchOpen ? <FiX size={18} /> : <FiSearch size={18} />}
               </button>
 
-              {/* Theme switch */}
+              {/* Theme Toggle */}
               <button
                 type="button"
                 onClick={toggleTheme}
@@ -192,20 +207,26 @@ export default function Navbar() {
                     ? "Switch to light mode"
                     : "Switch to dark mode"
                 }
-                className="group flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface text-text-main transition-all duration-300 hover:border-cyan-500/50 hover:bg-cyan-500/10 hover:text-cyan-600 disabled:cursor-default dark:border-dark-border dark:bg-dark-surface dark:text-dark-text-main dark:hover:text-cyan-300"
+                className="group flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface text-text-main transition-all duration-300 hover:border-cyan-500/50 hover:bg-cyan-500/10 hover:text-cyan-600 disabled:cursor-default dark:border-dark-border dark:bg-dark-surface dark:text-dark-text-main dark:hover:text-cyan-300 min-[401px]:h-10 min-[401px]:w-10"
               >
                 {mounted ? (
                   resolvedTheme === "dark" ? (
-                    <FiSun size={18} className="transition-transform duration-300 group-hover:rotate-45" />
+                    <FiSun
+                      size={18}
+                      className="transition-transform duration-300 group-hover:rotate-45"
+                    />
                   ) : (
-                    <FiMoon size={18} className="transition-transform duration-300 group-hover:-rotate-12" />
+                    <FiMoon
+                      size={18}
+                      className="transition-transform duration-300 group-hover:-rotate-12"
+                    />
                   )
                 ) : (
                   <span className="h-[18px] w-[18px]" />
                 )}
               </button>
 
-              {/* Admin shortcut */}
+              {/* Admin Shortcut */}
               <Link
                 href="/admin"
                 aria-label="Admin dashboard"
@@ -215,20 +236,20 @@ export default function Navbar() {
                 <FiShield size={18} />
               </Link>
 
-              {/* Mobile menu */}
+              {/* Mobile Menu Icon - separate from search */}
               <button
                 type="button"
-                onClick={() => setMenuOpen((open) => !open)}
+                onClick={openMobileMenu}
                 aria-label={menuOpen ? "Close navigation" : "Open navigation"}
                 aria-expanded={menuOpen}
-                className="hidden h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface text-text-main transition hover:border-cyan-500/50 hover:text-cyan-500 dark:border-dark-border dark:bg-dark-surface dark:text-dark-text-main lg:flex xl:hidden"
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface text-text-main transition-all duration-300 hover:border-cyan-500/50 hover:bg-cyan-500/10 hover:text-cyan-500 dark:border-dark-border dark:bg-dark-surface dark:text-dark-text-main min-[401px]:h-10 min-[401px]:w-10 lg:hidden"
               >
                 {menuOpen ? <FiX size={19} /> : <FiMenu size={19} />}
               </button>
             </div>
           </div>
 
-          {/* Tablet navigation */}
+          {/* Tablet Navigation */}
           <div className="hidden items-center gap-2 pb-3 lg:flex xl:hidden">
             {LINKS.map((link) => (
               <Link
@@ -248,29 +269,15 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Responsive mobile / tablet menu */}
-      {menuOpen && (
-        <div className="absolute inset-x-0 top-full border-b border-border bg-background/95 shadow-2xl shadow-black/10 backdrop-blur-2xl dark:border-dark-border dark:bg-dark-background/95 lg:hidden">
-          <div className="container-custom px-4 py-5 sm:px-6">
-
-            <div className="mb-5 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-bold text-text-main dark:text-dark-text-main">
-                  Explore LankaPulse
-                </p>
-                <p className="mt-1 text-xs text-text-muted dark:text-dark-text-muted">
-                  Your smarter view of the news.
-                </p>
-              </div>
-
-              <span className="flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-1.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                <FiActivity size={12} />
-                AI INSIGHTS
-              </span>
-            </div>
-
-            {/* Mobile search */}
-            <form onSubmit={handleSearch} role="search" className="relative mb-4">
+      {/* Mobile Search Panel */}
+      {searchOpen && (
+        <div className="absolute inset-x-0 top-full border-b border-border bg-background/95 shadow-xl backdrop-blur-2xl dark:border-dark-border dark:bg-dark-background/95 md:hidden">
+          <div className="container-custom px-4 py-4">
+            <form
+              onSubmit={handleSearch}
+              role="search"
+              className="relative"
+            >
               <FiSearch
                 size={18}
                 className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted dark:text-dark-text-muted"
@@ -282,21 +289,50 @@ export default function Navbar() {
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search news, topics, people..."
                 aria-label="Search news"
-                className="h-12 w-full rounded-xl border border-border bg-surface pl-11 pr-4 text-sm text-text-main outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/10 dark:border-dark-border dark:bg-dark-surface dark:text-dark-text-main"
+                autoFocus
+                className="h-12 w-full rounded-xl border border-border bg-surface pl-11 pr-12 text-sm text-text-main outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/10 dark:border-dark-border dark:bg-dark-surface dark:text-dark-text-main"
               />
 
               <button
                 type="submit"
                 disabled={!search.trim()}
                 aria-label="Submit search"
-                className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg bg-cyan-500 text-white transition hover:bg-cyan-600 disabled:opacity-40"
+                className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg bg-cyan-500 text-white transition hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <FiArrowUpRight size={17} />
               </button>
             </form>
+          </div>
+        </div>
+      )}
 
-            {/* Navigation links */}
-            <nav aria-label="Mobile navigation" className="grid gap-2 sm:grid-cols-2">
+      {/* Mobile / Tablet Navigation Panel */}
+      {menuOpen && (
+        <div className="absolute inset-x-0 top-full border-b border-border bg-background/95 shadow-2xl shadow-black/10 backdrop-blur-2xl dark:border-dark-border dark:bg-dark-background/95 lg:hidden">
+          <div className="container-custom px-4 py-5 sm:px-6">
+
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold text-text-main dark:text-dark-text-main">
+                  Explore LankaPulse
+                </p>
+
+                <p className="mt-1 text-xs text-text-muted dark:text-dark-text-muted">
+                  Your smarter view of the news.
+                </p>
+              </div>
+
+              <span className="flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-1.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                <FiActivity size={12} />
+                AI INSIGHTS
+              </span>
+            </div>
+
+            {/* Navigation Links */}
+            <nav
+              aria-label="Mobile navigation"
+              className="grid gap-2 sm:grid-cols-2"
+            >
               {LINKS.map((link) => {
                 const active = isActive(link.href);
 
@@ -313,11 +349,23 @@ export default function Navbar() {
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <span className={`font-mono text-[10px] ${active ? "text-cyan-600 dark:text-cyan-300" : "text-text-muted dark:text-dark-text-muted"}`}>
+                      <span
+                        className={`font-mono text-[10px] ${
+                          active
+                            ? "text-cyan-600 dark:text-cyan-300"
+                            : "text-text-muted dark:text-dark-text-muted"
+                        }`}
+                      >
                         {link.number}
                       </span>
 
-                      <span className={`text-sm font-semibold ${active ? "text-cyan-600 dark:text-cyan-300" : "text-text-main dark:text-dark-text-main"}`}>
+                      <span
+                        className={`text-sm font-semibold ${
+                          active
+                            ? "text-cyan-600 dark:text-cyan-300"
+                            : "text-text-main dark:text-dark-text-main"
+                        }`}
+                      >
                         {link.label}
                       </span>
                     </div>
@@ -344,12 +392,16 @@ export default function Navbar() {
                   Admin Dashboard
                 </span>
 
-                <FiArrowUpRight size={16} className="text-text-muted dark:text-dark-text-muted" />
+                <FiArrowUpRight
+                  size={16}
+                  className="text-text-muted dark:text-dark-text-muted"
+                />
               </Link>
             </nav>
 
-            <div className="mt-5 flex items-center justify-between border-t border-border/70 pt-4 dark:border-dark-border/70">
-              <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-text-muted dark:text-dark-text-muted">
+            {/* Footer Actions */}
+            <div className="mt-5 flex items-center justify-between gap-2 border-t border-border/70 pt-4 dark:border-dark-border/70">
+              <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-text-muted dark:text-dark-text-muted">
                 LankaPulse AI · Sri Lanka
               </span>
 
@@ -357,7 +409,7 @@ export default function Navbar() {
                 type="button"
                 onClick={toggleTheme}
                 disabled={!mounted}
-                className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-text-muted transition hover:bg-surface hover:text-cyan-600 dark:text-dark-text-muted dark:hover:bg-dark-surface dark:hover:text-cyan-300"
+                className="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-text-muted transition hover:bg-surface hover:text-cyan-600 dark:text-dark-text-muted dark:hover:bg-dark-surface dark:hover:text-cyan-300"
               >
                 {mounted && resolvedTheme === "dark" ? (
                   <>
