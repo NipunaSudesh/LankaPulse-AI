@@ -8,7 +8,7 @@ const VARIANTS = {
     'bg-slate-100 text-slate-800 border border-slate-200 hover:bg-accent hover:text-dark-background hover:border-accent dark:bg-dark-surface dark:text-dark-text-main dark:border-dark-border dark:hover:bg-accent dark:hover:text-dark-background dark:hover:border-accent',
 
   outline:
-    'inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-6 py-3 text-sm font-semibold text-white backdrop-blur-md transition-all duration-300 hover:border-[#00e6b8]/40 hover:bg-white/[0.08] hover:text-[#00e6b8] ',
+    'inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border dark:border-white/15 border-[#00e6b8] bg-white/[0.04] px-6 py-3 text-sm font-semibold text-black dark:text-white backdrop-blur-md transition-all duration-300 hover:border-[#00e6b8]/40 hover:bg-white/[0.08] hover:text-[#00e6b8] ',
 
   success:
     'bg-success text-white hover:bg-success/90 shadow-sm hover:shadow-[0_4px_16px_rgba(0,200,83,0.35)] dark:bg-success dark:text-white',
