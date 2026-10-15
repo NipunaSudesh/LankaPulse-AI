@@ -1,210 +1,378 @@
+"use client";
 
-'use client';
-
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useTheme } from 'next-themes';
-import { useState, useEffect } from 'react';
+import Link from "next/link";
 import Image from "next/image";
+import { usePathname, useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
+import { useState, useEffect } from "react";
 import {
-  FiSun,  FiMoon,  FiSearch, FiMenu, FiX,  FiShield,} from 'react-icons/fi';
+  FiSun,
+  FiMoon,
+  FiSearch,
+  FiMenu,
+  FiX,
+  FiShield,
+  FiArrowUpRight,
+  FiActivity,
+} from "react-icons/fi";
 
 const LINKS = [
-  { href: '/', label: 'Latest News' },
-  { href: '/categories', label: 'Categories' },
-  { href: '/trending', label: 'Trending' },
-  { href: '/about-us', label: 'About Us' },
+  { href: "/", label: "Latest News", number: "01" },
+  { href: "/categories", label: "Categories", number: "02" },
+  { href: "/trending", label: "Trending", number: "03" },
+  { href: "/about-us", label: "About Us", number: "04" },
 ];
 
 export default function Navbar() {
-const pathname = usePathname();
-const { resolvedTheme, setTheme } = useTheme();
+  const pathname = usePathname();
+  const router = useRouter();
+  const { resolvedTheme, setTheme } = useTheme();
 
-const [mounted, setMounted] = useState(false);
-const [menuOpen, setMenuOpen] = useState(false);
-const [search, setSearch] = useState('');
+  const [mounted, setMounted] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [search, setSearch] = useState("");
 
-useEffect(() => {
-  setMounted(true);
-}, []);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-const toggleTheme = () => {
-  setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
-};
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
 
+  useEffect(() => {
+    if (!menuOpen) return;
 
-  const handleSearch = (e) => {
-    e.preventDefault();
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
 
-    const query = search.trim();
+    window.addEventListener("keydown", handleKeyDown);
 
-    if (query) {
-      window.location.href = `/search?q=${encodeURIComponent(query)}`;
-      setMenuOpen(false);
-    }
-  };
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [menuOpen]);
 
   const isActive = (href) => {
-    if (href === '/') return pathname === '/';
+    if (href === "/") return pathname === "/";
     return pathname === href || pathname.startsWith(`${href}/`);
   };
 
+  const handleSearch = (event) => {
+    event.preventDefault();
+
+    const query = search.trim();
+    if (!query) return;
+
+    setMenuOpen(false);
+    router.push(`/search?q=${encodeURIComponent(query)}`);
+  };
+
+  const toggleTheme = () => {
+    if (!mounted) return;
+    setTheme(resolvedTheme === "dark" ? "light" : "dark");
+  };
+
   return (
-    <header className=" sticky top-0 z-50 border-b border-border bg-surface/95 backdrop-blur-xl dark:border-dark-border dark:bg-dark-background/95">
-      <div className="container-custom flex h-16 items-center justify-between gap-4">
+    <header className="sticky top-0 z-50">
+      {/* Ambient glow */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/80 to-transparent" />
 
-        {/* Brand */}
-        <Link href="/" className="group shrink-0 flex justify-center items-center ">
-                <Image
-          src="/LP_logo.png"
-          alt="LankaPulse AI logo"
-          width={60}
-          height={40}
-          priority
-        />
-          <span className=" brand-gradient text-xl font-extrabold tracking-tight transition-all duration-300 group-hover:drop-shadow-[0_0_16px_rgba(0,255,255,0.5)]">
-            LankaPulse AI
-          </span>
-        </Link>
+      <div className="border-b border-border/70 bg-background/85 shadow-lg shadow-black/[0.025] backdrop-blur-2xl dark:border-dark-border/70 dark:bg-dark-background/85">
+        <div className="container-custom">
+          <div className="flex min-h-[76px] items-center justify-between gap-4">
 
-        {/* Desktop Search */}
-        <form
-          onSubmit={handleSearch}
-          className="hidden flex-1 justify-center px-4 md:flex"
-        >
-          <div className="relative w-full max-w-md">
-            <FiSearch
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted dark:text-dark-text-muted"
-            />
-
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search news, topics, people..."
-              aria-label="Search news"
-              className="h-9 w-full rounded-lg border border-border bg-background pl-10 pr-4 text-sm text-text-main outline-none transition-all duration-200 placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary-light/30 dark:border-dark-border dark:bg-dark-surface dark:text-dark-text-main dark:placeholder:text-dark-text-muted dark:focus:border-primary-light"
-            />
-          </div>
-        </form>
-
-        {/* Desktop Navigation */}
-        <nav
-          aria-label="Main navigation"
-          className="hidden items-center gap-5 lg:flex"
-        >
-          {LINKS.map((link) => (
+            {/* Brand */}
             <Link
-              key={link.href}
-              href={link.href}
-              aria-current={isActive(link.href) ? 'page' : undefined}
-              className={`text-sm font-medium transition-all duration-200 ${
-                isActive(link.href)
-                  ? 'text-primary dark:text-primary-light'
-                  : 'text-text-muted hover:text-primary dark:text-dark-text-muted dark:hover:text-accent'
-              }`}
+              href="/"
+              aria-label="LankaPulse AI home"
+              className="group flex shrink-0 items-center gap-2.5"
             >
-              {link.label}
+              <div className="relative">
+                <div className="absolute -inset-1 rounded-2xl bg-gradient-to-br from-cyan-400/40 to-blue-600/40 opacity-0 blur-md transition duration-300 group-hover:opacity-100" />
+
+                <div className="relative overflow-hidden rounded-xl  bg-surface p-1 shadow-sm transition duration-300 group-hover:-translate-y-0.5 group-hover:border-cyan-400/60  dark:bg-dark-surface border border-primary/15 dark:border-light-cyan">
+                  <Image 
+                    src="/LP_logo.png"
+                    alt="LankaPulse AI"
+                    width={44}
+                    height={44}
+                    priority
+                    className="h-10 w-10 rounded-lg object-contain sm:h-11 sm:w-11"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col">
+                <span className="brand-gradient text-xl font-extrabold tracking-tight transition-all duration-300 group-hover:drop-shadow-[0_0_16px_rgba(0,255,255,0.5)]">
+                  LankaPulse AI
+                  
+                </span>
+
+              </div>
             </Link>
-          ))}
-        </nav>
+            
 
-        {/* Action Controls */}
-        <div className="flex shrink-0 items-center gap-2">
+            {/* Desktop search */}
+            <form
+              onSubmit={handleSearch}
+              role="search"
+              className="hidden min-w-0 max-w-[360px] flex-1 md:block lg:mx-5"
+            >
+              <div className="group relative">
+                <FiSearch
+                  size={17}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted transition-colors group-focus-within:text-cyan-500 dark:text-dark-text-muted"
+                />
 
-          {/* Theme Toggle */}
-          <button
-            type="button"
-            onClick={toggleTheme}
-            aria-label="Toggle theme"
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background text-primary transition-all duration-200 hover:border-accent hover:bg-accent hover:text-dark-background dark:border-dark-border dark:bg-dark-surface dark:text-primary-light"
-          >
-            {mounted ? (
-              resolvedTheme === 'dark' ? (
-                <FiSun size={18} />
-              ) : (
-                <FiMoon size={18} />
-              )
-            ) : (
-              <span className="h-[18px] w-[18px]" />
-            )}
-          </button>
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search stories, topics, people..."
+                  aria-label="Search news"
+                  className="h-11 w-full rounded-2xl border border-border/80 bg-surface/70 pl-10 pr-16 text-sm text-text-main outline-none transition-all duration-300 placeholder:text-text-muted/80 hover:border-primary/30 focus:border-cyan-500/70 focus:bg-background focus:ring-4 focus:ring-cyan-500/10 dark:border-dark-border dark:bg-dark-surface/70 dark:text-dark-text-main dark:placeholder:text-dark-text-muted dark:focus:bg-dark-background"
+                />
 
-          {/* Admin Dashboard */}
-          <Link
-            href="/admin"
-            aria-label="Admin dashboard"
-            title="Admin dashboard"
-            className="hidden h-9 w-9 items-center justify-center rounded-full border border-border bg-background text-primary transition-all duration-200 hover:border-accent hover:bg-accent hover:text-dark-background dark:border-dark-border dark:bg-dark-surface dark:text-primary-light sm:flex"
-          >
-            <FiShield size={18} />
-          </Link>
+                <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-border px-1.5 py-1 text-[10px] text-text-muted dark:border-dark-border dark:text-dark-text-muted">
+                  Enter
+                </kbd>
+              </div>
+            </form>
 
-          {/* Mobile Menu Toggle */}
-          <button
-            type="button"
-            onClick={() => setMenuOpen((open) => !open)}
-            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-            aria-expanded={menuOpen}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background text-primary transition-all duration-200 hover:border-accent hover:bg-accent hover:text-dark-background dark:border-dark-border dark:bg-dark-surface dark:text-primary-light lg:hidden"
-          >
-            {menuOpen ? <FiX size={20} /> : <FiMenu size={20} />}
-          </button>
-        </div>
-      </div>
+            {/* Desktop navigation */}
+            <nav
+              aria-label="Main navigation"
+              className="hidden items-center gap-1 xl:flex"
+            >
+              {LINKS.map((link) => {
+                const active = isActive(link.href);
 
-      {/* Mobile Menu */}
-      {menuOpen && (
-        <div className="border-t border-border bg-surface px-4 pb-4 pt-3 dark:border-dark-border dark:bg-dark-background lg:hidden">
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    aria-current={active ? "page" : undefined}
+                    className={`relative rounded-xl px-3 py-2.5 text-[13px] font-semibold transition-all duration-200 ${
+                      active
+                        ? "bg-cyan-500/10 text-cyan-600 dark:text-cyan-300"
+                        : "text-text-muted hover:bg-surface hover:text-text-main dark:text-dark-text-muted dark:hover:bg-dark-surface dark:hover:text-dark-text-main"
+                    }`}
+                  >
+                    {link.label}
 
-          {/* Mobile Search */}
-          <form onSubmit={handleSearch} className="relative mb-3">
-            <FiSearch
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted dark:text-dark-text-muted"
-            />
+                    {active && (
+                      <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500" />
+                    )}
+                  </Link>
+                );
+              })}
+            </nav>
 
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search news, topics, people..."
-              aria-label="Search news"
-              className="h-10 w-full rounded-lg border border-border bg-background pl-10 pr-4 text-sm text-text-main outline-none placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary-light/30 dark:border-dark-border dark:bg-dark-surface dark:text-dark-text-main"
-            />
-          </form>
+            {/* Actions */}
+            <div className="flex shrink-0 items-center gap-2">
 
-          {/* Mobile Navigation */}
-          <nav
-            aria-label="Mobile navigation"
-            className="flex flex-col gap-1"
-          >
+              {/* Mobile search */}
+              <button
+                type="button"
+                onClick={() => setMenuOpen((open) => !open)}
+                aria-label={menuOpen ? "Close menu" : "Open search and menu"}
+                aria-expanded={menuOpen}
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface text-text-main transition hover:border-cyan-500/50 hover:text-cyan-500 dark:border-dark-border dark:bg-dark-surface dark:text-dark-text-main md:hidden"
+              >
+                {menuOpen ? <FiX size={19} /> : <FiSearch size={18} />}
+              </button>
+
+              {/* Theme switch */}
+              <button
+                type="button"
+                onClick={toggleTheme}
+                disabled={!mounted}
+                aria-label={
+                  mounted && resolvedTheme === "dark"
+                    ? "Switch to light mode"
+                    : "Switch to dark mode"
+                }
+                className="group flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface text-text-main transition-all duration-300 hover:border-cyan-500/50 hover:bg-cyan-500/10 hover:text-cyan-600 disabled:cursor-default dark:border-dark-border dark:bg-dark-surface dark:text-dark-text-main dark:hover:text-cyan-300"
+              >
+                {mounted ? (
+                  resolvedTheme === "dark" ? (
+                    <FiSun size={18} className="transition-transform duration-300 group-hover:rotate-45" />
+                  ) : (
+                    <FiMoon size={18} className="transition-transform duration-300 group-hover:-rotate-12" />
+                  )
+                ) : (
+                  <span className="h-[18px] w-[18px]" />
+                )}
+              </button>
+
+              {/* Admin shortcut */}
+              <Link
+                href="/admin"
+                aria-label="Admin dashboard"
+                title="Admin dashboard"
+                className="hidden h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface text-text-muted transition-all duration-300 hover:border-cyan-500/50 hover:bg-cyan-500/10 hover:text-cyan-600 dark:border-dark-border dark:bg-dark-surface dark:text-dark-text-muted dark:hover:text-cyan-300 sm:flex"
+              >
+                <FiShield size={18} />
+              </Link>
+
+              {/* Mobile menu */}
+              <button
+                type="button"
+                onClick={() => setMenuOpen((open) => !open)}
+                aria-label={menuOpen ? "Close navigation" : "Open navigation"}
+                aria-expanded={menuOpen}
+                className="hidden h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface text-text-main transition hover:border-cyan-500/50 hover:text-cyan-500 dark:border-dark-border dark:bg-dark-surface dark:text-dark-text-main lg:flex xl:hidden"
+              >
+                {menuOpen ? <FiX size={19} /> : <FiMenu size={19} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Tablet navigation */}
+          <div className="hidden items-center gap-2 pb-3 lg:flex xl:hidden">
             {LINKS.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                onClick={() => setMenuOpen(false)}
-                aria-current={isActive(link.href) ? 'page' : undefined}
-                className={`rounded-lg px-3 py-3 text-sm font-medium transition-all duration-200 ${
+                aria-current={isActive(link.href) ? "page" : undefined}
+                className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
                   isActive(link.href)
-                    ? 'bg-primary/10 text-primary dark:bg-primary-light/10 dark:text-primary-light'
-                    : 'text-text-muted hover:bg-accent/10 hover:text-primary dark:text-dark-text-muted dark:hover:text-accent'
+                    ? "bg-cyan-500/10 text-cyan-600 dark:text-cyan-300"
+                    : "text-text-muted hover:bg-surface dark:text-dark-text-muted dark:hover:bg-dark-surface"
                 }`}
               >
                 {link.label}
               </Link>
             ))}
+          </div>
+        </div>
+      </div>
 
-            <Link
-              href="/admin"
-              onClick={() => setMenuOpen(false)}
-              className="flex items-center gap-2 rounded-lg px-3 py-3 text-sm font-medium text-text-muted hover:bg-accent/10 hover:text-primary dark:text-dark-text-muted dark:hover:text-accent"
-            >
-              <FiShield size={16} />
-              Admin Dashboard
-            </Link>
-          </nav>
+      {/* Responsive mobile / tablet menu */}
+      {menuOpen && (
+        <div className="absolute inset-x-0 top-full border-b border-border bg-background/95 shadow-2xl shadow-black/10 backdrop-blur-2xl dark:border-dark-border dark:bg-dark-background/95 lg:hidden">
+          <div className="container-custom px-4 py-5 sm:px-6">
+
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold text-text-main dark:text-dark-text-main">
+                  Explore LankaPulse
+                </p>
+                <p className="mt-1 text-xs text-text-muted dark:text-dark-text-muted">
+                  Your smarter view of the news.
+                </p>
+              </div>
+
+              <span className="flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-1.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                <FiActivity size={12} />
+                AI INSIGHTS
+              </span>
+            </div>
+
+            {/* Mobile search */}
+            <form onSubmit={handleSearch} role="search" className="relative mb-4">
+              <FiSearch
+                size={18}
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted dark:text-dark-text-muted"
+              />
+
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search news, topics, people..."
+                aria-label="Search news"
+                className="h-12 w-full rounded-xl border border-border bg-surface pl-11 pr-4 text-sm text-text-main outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/10 dark:border-dark-border dark:bg-dark-surface dark:text-dark-text-main"
+              />
+
+              <button
+                type="submit"
+                disabled={!search.trim()}
+                aria-label="Submit search"
+                className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg bg-cyan-500 text-white transition hover:bg-cyan-600 disabled:opacity-40"
+              >
+                <FiArrowUpRight size={17} />
+              </button>
+            </form>
+
+            {/* Navigation links */}
+            <nav aria-label="Mobile navigation" className="grid gap-2 sm:grid-cols-2">
+              {LINKS.map((link) => {
+                const active = isActive(link.href);
+
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMenuOpen(false)}
+                    aria-current={active ? "page" : undefined}
+                    className={`group flex items-center justify-between rounded-xl border px-4 py-3.5 transition-all duration-200 ${
+                      active
+                        ? "border-cyan-500/30 bg-cyan-500/5"
+                        : "border-border/70 hover:border-cyan-500/30 hover:bg-surface dark:border-dark-border/70 dark:hover:bg-dark-surface"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className={`font-mono text-[10px] ${active ? "text-cyan-600 dark:text-cyan-300" : "text-text-muted dark:text-dark-text-muted"}`}>
+                        {link.number}
+                      </span>
+
+                      <span className={`text-sm font-semibold ${active ? "text-cyan-600 dark:text-cyan-300" : "text-text-main dark:text-dark-text-main"}`}>
+                        {link.label}
+                      </span>
+                    </div>
+
+                    <FiArrowUpRight
+                      size={16}
+                      className={`transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 ${
+                        active
+                          ? "text-cyan-500"
+                          : "text-text-muted dark:text-dark-text-muted"
+                      }`}
+                    />
+                  </Link>
+                );
+              })}
+
+              <Link
+                href="/admin"
+                onClick={() => setMenuOpen(false)}
+                className="flex items-center justify-between rounded-xl border border-border/70 px-4 py-3.5 transition hover:border-cyan-500/30 hover:bg-surface dark:border-dark-border/70 dark:hover:bg-dark-surface sm:col-span-2"
+              >
+                <span className="flex items-center gap-3 text-sm font-semibold text-text-main dark:text-dark-text-main">
+                  <FiShield size={16} className="text-cyan-500" />
+                  Admin Dashboard
+                </span>
+
+                <FiArrowUpRight size={16} className="text-text-muted dark:text-dark-text-muted" />
+              </Link>
+            </nav>
+
+            <div className="mt-5 flex items-center justify-between border-t border-border/70 pt-4 dark:border-dark-border/70">
+              <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-text-muted dark:text-dark-text-muted">
+                LankaPulse AI · Sri Lanka
+              </span>
+
+              <button
+                type="button"
+                onClick={toggleTheme}
+                disabled={!mounted}
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-text-muted transition hover:bg-surface hover:text-cyan-600 dark:text-dark-text-muted dark:hover:bg-dark-surface dark:hover:text-cyan-300"
+              >
+                {mounted && resolvedTheme === "dark" ? (
+                  <>
+                    <FiSun size={15} />
+                    Light mode
+                  </>
+                ) : (
+                  <>
+                    <FiMoon size={15} />
+                    Dark mode
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </header>
