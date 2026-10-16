@@ -1,105 +1,103 @@
+
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-@theme {
-  --color-primary: var(--color-primary);
-  --color-primary-light: var(--color-primary-light);
-  --color-accent: var(--color-accent);
-
-  --color-light-cyan: var(--color-light-cyan);
-  --color-light-blue: var(--color-light-blue);
-  --color-light-green: var(--color-light-green);
-
-  --color-dark-background: var(--color-dark-background);
-  --color-dark-surface: var(--color-dark-surface);
-  --color-dark-border: var(--color-dark-border);
-  --color-dark-card: var(--color-dark-card);
-
-  --color-dark-text-main: var(--color-dark-text);
-  --color-dark-text-muted: var(--color-dark-text-muted);
-
-  --color-background: var(--color-background);
-  --color-surface: var(--color-surface);
-  --color-border: var(--color-border);
-  --color-text-main: var(--color-text);
-  --color-text-muted: var(--color-text-muted);
-
-  --color-success: var(--color-success);
-  --color-danger: var(--color-danger);
-  --color-warning: var(--color-warning);
---color-text-green-light: var(--color-text-green-light);
-  --color-text-green-dark: var(  --color-text-green-dark);
-}
-
 :root {
-  /* Primary Brand */
-  --color-primary: #0000e6;
-  --color-primary-light: #4da6ff;
+  color-scheme: light;
 
-  /* Main Accent */
-  --color-accent: #00e6b8;
+  --app-primary: #0000e6;
+  --app-primary-light: #4da6ff;
+  --app-accent: #00e6b8;
 
-  /* Brilliant / Neon Colors */
-  --color-light-cyan: #00ffff;
-  --color-light-blue: #4169ff;
-  --color-light-green: #00ff9d;
-  /* Status Colors */
-  --color-success: #00c853;
-  --color-danger: #ef4444;
-  --color-warning: #f59e0b;
+  --app-light-cyan: #00ffff;
+  --app-light-blue: #4169ff;
+  --app-light-green: #00ff9d;
 
-  /* Light Theme */
-  --color-background: #f8fafc;
-  --color-surface: #ffffff;
-  --color-border: #e2e8f0;
-  --color-text: #0f172a;
-  --color-text-muted: #3a424e;
+  --app-success: #00c853;
+  --app-danger: #ef4444;
+  --app-warning: #f59e0b;
 
-  /* Dark Theme#0b1d3a */
-  --color-dark-background: #020617;
-  --color-dark-surface: #0f172a;
-  --color-dark-border: #1e293b;
-  --color-dark-text: #f8fafc;
-  --color-dark-text-muted: #94a3b8;
-  --color-dark-card: #0b1d3a;
+  --app-background: #f8fafc;
+  --app-surface: #ffffff;
+  --app-border: #e2e8f0;
+  --app-text: #0f172a;
+  --app-text-muted: #3a424e;
 
-    --color-neon-cyan: #00ffff;
-  --color-neon-blue: #4169ff;
-  --color-neon-green: #00ff9d;
-  --color-text-green-light: #05c57b;
-  --color-text-green-dark: #00e6b8;
+  --app-dark-background: #020617;
+  --app-dark-surface: #0f172a;
+  --app-dark-border: #1e293b;
+  --app-dark-card: #0b1d3a;
+  --app-dark-text: #f8fafc;
+  --app-dark-text-muted: #94a3b8;
+
+  --app-text-green-light: #05c57b;
+  --app-text-green-dark: #00e6b8;
 }
 
-/* Base and utilities */
+@theme inline {
+  --color-primary: var(--app-primary);
+  --color-primary-light: var(--app-primary-light);
+  --color-accent: var(--app-accent);
+
+  --color-light-cyan: var(--app-light-cyan);
+  --color-light-blue: var(--app-light-blue);
+  --color-light-green: var(--app-light-green);
+
+  --color-success: var(--app-success);
+  --color-danger: var(--app-danger);
+  --color-warning: var(--app-warning);
+
+  --color-background: var(--app-background);
+  --color-surface: var(--app-surface);
+  --color-border: var(--app-border);
+  --color-text-main: var(--app-text);
+  --color-text-muted: var(--app-text-muted);
+
+  --color-dark-background: var(--app-dark-background);
+  --color-dark-surface: var(--app-dark-surface);
+  --color-dark-border: var(--app-dark-border);
+  --color-dark-card: var(--app-dark-card);
+  --color-dark-text-main: var(--app-dark-text);
+  --color-dark-text-muted: var(--app-dark-text-muted);
+
+  --color-text-green-light: var(--app-text-green-light);
+  --color-text-green-dark: var(--app-text-green-dark);
+}
+
 html {
   scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
-  background: var(--color-background);
-  color: var(--color-text);
+  background: var(--app-background);
+  color: var(--app-text);
   font-family: Arial, Helvetica, sans-serif;
   transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-.dark body {
-  background: var(--color-dark-background);
-  color: var(--color-dark-text);
+.dark {
+  color-scheme: dark;
+  --app-background: #020617;
+  --app-surface: #0f172a;
+  --app-border: #1e293b;
+  --app-text: #f8fafc;
+  --app-text-muted: #94a3b8;
 }
 
 .brand-gradient {
   background: linear-gradient(
-    90deg,
-    var(--color-neon-cyan),
-    var(--color-neon-blue),
-    var(--color-neon-green)
+    100deg,
+    var(--app-light-cyan) 0%,
+    var(--app-primary-light) 48%,
+    var(--app-accent) 100%
   );
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
+
 @layer components {
   .container-custom {
     width: 100%;
