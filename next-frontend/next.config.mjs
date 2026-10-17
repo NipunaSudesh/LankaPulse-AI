@@ -1,8 +1,24 @@
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
+
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "www.onlanka.com",
+        pathname: "/wp-content/uploads/**",
+      },
+      {
+        protocol: "https",
+        hostname: "www.lankabusinessonline.com",
+        pathname: "/wp-content/uploads/**",
+      },
+    ],
+  },
+
   turbopack: {
     rules: {
       "*.css": {

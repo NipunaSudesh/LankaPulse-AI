@@ -426,7 +426,10 @@ export default function Navbar() {
             </div>
           </div>
         </div>
+        
       )}
+            <div className="h-1 w-full bg-gradient-to-r from-primary via-light-blue to-accent" />
     </header>
+    
   );
 }

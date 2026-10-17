@@ -2,6 +2,7 @@
 import Categories from "@/components/CategorySection";
 import HomeHero from "../components/HomeHero";
 import HeroCard from "../components/HomeHero";
+import NewsSection from "@/components/NewsSection";
 
 export default function HomePage() {
   return (
@@ -15,6 +16,7 @@ export default function HomePage() {
         />
        
         <Categories />
+        <NewsSection />
       </div>
     </main>
   );
