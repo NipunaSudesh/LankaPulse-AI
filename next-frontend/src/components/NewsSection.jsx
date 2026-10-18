@@ -190,9 +190,9 @@ export default function NewsSection() {
         )}
 
         {!loading && !error && (
-          <div className="grid grid-cols-1 gap-4">
-            {articles.length > 0 ? (
-              articles.map((article) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {articles1.length > 0 ? (
+              articles1.map((article) => (
                 <NewsCard key={article.id} article={article} />
               ))
             ) : (

@@ -17,9 +17,9 @@ import {
 } from "react-icons/fi";
 
 const LINKS = [
-  { href: "/", label: "Latest News", number: "01" },
+  { href: "/", label: "Home", number: "01" },
   { href: "/categories", label: "Categories", number: "02" },
-  { href: "/trending", label: "Trending", number: "03" },
+  { href: "/latest-news", label: "Latest News", number: "03" },
   { href: "/about-us", label: "About Us", number: "04" },
 ];
 

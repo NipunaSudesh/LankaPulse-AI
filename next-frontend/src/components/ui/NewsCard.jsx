@@ -3,6 +3,7 @@
 
 import Image from "next/image";
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   FiArrowUpRight,
   FiClock,
@@ -12,10 +13,12 @@ import {
 
 export default function NewsCard({ article }) {
   const [imageError, setImageError] = useState(false);
+  const router = useRouter();
 
   if (!article) return null;
 
   const {
+    id,
     title,
     summary,
     image_url,
@@ -24,6 +27,17 @@ export default function NewsCard({ article }) {
     published_at,
     url,
   } = article;
+
+  const openArticle = () => {
+    if (!id) {
+      console.error("Cannot open article: missing article ID.");
+      return;
+    }
+
+    sessionStorage.setItem("selectedArticle", JSON.stringify(article));
+
+    router.push(`/article?id=${encodeURIComponent(id)}`);
+  };
 
   const categoryName = category || "General";
 
@@ -43,7 +57,10 @@ export default function NewsCard({ article }) {
   const description = summary
     ? summary
         .replace(/\s+/g, " ")
-        .replace(/\s*\*The post .+? appeared first on .+\.?$/i, "")
+        .replace(
+          /\s\*\\\*The post .+? appeared first on .+\\.?$/i,
+          ""
+        )
         .trim()
     : "Discover the latest developments and updates from Sri Lanka.";
 
@@ -51,15 +68,21 @@ export default function NewsCard({ article }) {
     !imageError && image_url ? image_url : "/LP_logo.png";
 
   return (
-    <article className="group flex min-h-48 overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all duration-300 hover:border-cyan-400/60 hover:shadow-lg hover:shadow-slate-200/50 dark:border-slate-800 dark:bg-slate-900 dark:hover:shadow-black/20">
+    <article
+      onClick={openArticle}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openArticle();
+        }
+      }}
+      role="link"
+      tabIndex={0}
+      aria-label={`Read article: ${title || "News article"}`}
+      className="group flex min-h-48 cursor-pointer overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all duration-300 hover:border-cyan-400/60 hover:shadow-lg hover:shadow-slate-200/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 dark:border-slate-800 dark:bg-slate-900 dark:hover:shadow-black/20"
+    >
       {/* Left: Image */}
-      <a
-        href={url || undefined}
-        target={url ? "_blank" : undefined}
-        rel={url ? "noopener noreferrer" : undefined}
-        aria-label={title ? `Read ${title}` : "Read news article"}
-        className="relative min-h-48 w-[38%] shrink-0 overflow-hidden bg-slate-100 sm:w-[32%] lg:w-[28%] dark:bg-slate-800"
-      >
+      <div className="relative min-h-48 w-[38%] shrink-0 overflow-hidden bg-slate-100 sm:w-[32%] lg:w-[28%] dark:bg-slate-800">
         <Image
           src={imageSrc}
           alt={title || "News article image"}
@@ -79,7 +102,7 @@ export default function NewsCard({ article }) {
           <FiZap className="text-cyan-300" size={12} />
           LankaPulse AI
         </span>
-      </a>
+      </div>
 
       {/* Right: News content */}
       <div className="flex min-w-0 flex-1 flex-col justify-center p-3 sm:p-5 lg:p-6">
@@ -109,17 +132,10 @@ export default function NewsCard({ article }) {
         </p>
 
         {/* Read more */}
-        {url && (
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 inline-flex items-center gap-1.5 self-start text-xs font-bold text-cyan-700 transition-all hover:gap-2.5 sm:mt-4 sm:text-sm dark:text-cyan-400"
-          >
-            Read full story
-            <FiArrowUpRight size={16} />
-          </a>
-        )}
+        <span className="mt-3 inline-flex items-center gap-1.5 self-start text-xs font-bold text-cyan-700 transition-all group-hover:gap-2.5 sm:mt-4 sm:text-sm dark:text-cyan-400">
+          Read full story
+          <FiArrowUpRight size={16} />
+        </span>
       </div>
     </article>
   );
