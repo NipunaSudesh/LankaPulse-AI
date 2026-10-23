@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\NewsArticle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use App\Models\Category;
 use Illuminate\Support\Facades\Log;
 
 class NewsController extends Controller
@@ -161,5 +162,20 @@ class NewsController extends Controller
     }
 
     return $allArticles;
+}
+
+// GET /api/v1/news/categories
+public function categories()
+{
+    $categories = Category::query()
+        ->where('is_active', true)
+        ->orderBy('sort_order')
+        ->get(['id', 'name', 'slug', 'description', 'img_url']);
+
+    return response()->json([
+        'success' => true,
+        'total'   => $categories->count(),
+        'data'    => $categories,
+    ]);
 }
 }

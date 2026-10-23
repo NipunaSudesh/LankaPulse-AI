@@ -88,12 +88,16 @@ class FetchSriLankaNews extends Command
                                     'content' => $article['content'] ?? null,
                                     'image_url' => $article['image_url'] ?? null,
                                     'source_name' => $sourceName,
-                                    'category' => $article['category'] ?? 'General',
-                                    'language' => $article['language'] ?? 'en',
-                                    'published_at' => $publishedAt,
+                                   'category' => $this->detectCategory(
+                                    $title,
+                                    $article['summary'] ?? null,
+                                    $article['content'] ?? null
+                                ),
+                                'language' => $article['language'] ?? 'en',
+                                'published_at' => $publishedAt,
                                 ]);
 
-                                return true;
+                         return true;
                             }
                         );
 
@@ -334,4 +338,78 @@ private function fetchInduwara(): array
                 true
             );
     }
+
+    private function detectCategory(string $title, ?string $summary = null, ?string $content = null): string
+{
+    $text = mb_strtolower(
+        trim($title . ' ' . ($summary ?? '') . ' ' . ($content ?? ''))
+    );
+
+    // Order matters — more specific rules first
+    $rules = [
+        'Weather' => [
+            'rainfall', 'rain', 'thundershower', 'low-pressure', 'weather',
+            'meteorology', 'flood', 'cyclone', 'storm', 'showers',
+        ],
+        'Sports' => [
+            'cricket', 'odi', 't20', 'test match', 'football', 'rugby',
+            'athletics', 'school games', 'sports', 'match', 'tournament',
+        ],
+        'Crime' => [
+            'arrest', 'arrested', 'bribery', 'ciaboc', 'police', 'warrant',
+            'murder', 'remanded', 'court', 'suspect', 'fraud', 'money laundering',
+            'detention', 'prison', 'sentenced',
+        ],
+        'Health' => [
+            'hospital', 'health', 'medical', 'doctor', 'patient', 'disease',
+            'vaccine', 'clinic', 'covid', 'dengue',
+        ],
+        'Education' => [
+            'school', 'university', 'education', 'student', 'exam', 'teacher',
+            'curriculum', 'classroom',
+        ],
+        'Environment' => [
+            'elephant', 'wildlife', 'conservation', 'environment', 'climate',
+            'dam safety', 'forest', 'pollution', 'biodiversity',
+        ],
+        'Technology' => [
+            'digital', 'ai ', 'artificial intelligence', 'software', 'e-filing',
+            'cloud', 'cyber', 'app ', 'online system', 'technology',
+        ],
+        'Economy' => [
+            'tax', 'revenue', 'imf', 'export', 'import', 'inflation', 'price',
+            'bond', 'rupee', 'economy', 'finance', 'investment', 'gdp',
+            'trade', 'budget', 'central bank', 'interest rate', 'business',
+        ],
+        'International' => [
+            'united states', 'india', 'japan', 'china', 'eu ', 'foreign',
+            'embassy', 'overseas', 'international', 'diplomatic',
+        ],
+        'Culture' => [
+            'actor', 'actress', 'film', 'movie', 'book fair', 'art', 'music',
+            'entertainment', 'drama', 'cinema', 'festival',
+        ],
+        'Public' => [
+            'bus', 'transport', 'power cut', 'electricity', 'water supply',
+            'land release', 'motorcycle', 'public', 'road', 'railway',
+            'utility', 'service',
+        ],
+        'Politics' => [
+            'government', 'minister', 'parliament', 'president', 'prime minister',
+            'bill', 'election', 'cabinet', 'mp ', 'party', 'policy', 'constitution',
+            'opposition', 'protest',
+        ],
+    ];
+
+    foreach ($rules as $category => $keywords) {
+        foreach ($keywords as $keyword) {
+            if (str_contains($text, $keyword)) {
+                return $category;
+            }
+        }
+    }
+
+    return 'Public'; 
+}
+
 }

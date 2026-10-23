@@ -97,7 +97,7 @@ export default function ArticlePage() {
         <div className="mb-2 max-w-4xl">
 
 
-          <h1 className="mt-2 text-3xl font-extrabold leading-tight tracking-tight text-slate-950 dark:text-white sm:text-4xl lg:text-5xl">
+          <h1 className="mt-2 text-2xl font-extrabold leading-tight tracking-tight text-slate-950 dark:text-white sm:text-3xl lg:text-4xl">
             {article.title || "Untitled news article"}
           </h1>
 
