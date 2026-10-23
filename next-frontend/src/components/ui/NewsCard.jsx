@@ -41,10 +41,11 @@ export default function NewsCard({ article }) {
 
   const categoryName = category || "General";
 
-  const publisher =
-    source_name && source_name.toLowerCase() !== "lk"
-      ? source_name
-      : "Sri Lankan News";
+  const publisher = "Sri Lankan News";
+  // const publisher =
+  //   source_name && source_name.toLowerCase() !== "lk"
+  //     ? source_name
+  //     : "Sri Lankan News";
 
   const formattedDate = published_at
     ? new Date(published_at).toLocaleDateString("en-LK", {

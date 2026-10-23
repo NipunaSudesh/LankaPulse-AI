@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import CategoriesCard from "./ui/CategoriesCard";
 import Header from "./ui/Header";
 import {
@@ -82,6 +82,12 @@ export default function Categories() {
   const swiperRef = useRef(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
+  const [mounted, setMounted] = useState(false);
+
+useEffect(() => {
+  setMounted(true);
+}, []);
+
   return (
     <section
       id="categories"
@@ -150,7 +156,8 @@ export default function Categories() {
       </div>
 
       {/* Categories carousel */}
-      <Swiper
+     
+     {mounted ? ( <Swiper
         modules={[Autoplay, Pagination, A11y]}
         onSwiper={(swiper) => {
           swiperRef.current = swiper;
@@ -212,7 +219,7 @@ export default function Categories() {
           </SwiperSlide>
         ))}
       </Swiper>
-
+) : null}
       {/* Bottom information */}
       <div className=" flex flex-col gap-3 border-t border-border  sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs leading-5 text-text-muted">

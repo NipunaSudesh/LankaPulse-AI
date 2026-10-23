@@ -16,6 +16,16 @@ const nextConfig = {
         hostname: "www.lankabusinessonline.com",
         pathname: "/wp-content/uploads/**",
       },
+      {
+        protocol: "https",
+        hostname: "blogger.googleusercontent.com",
+        pathname: "/img/**",
+      },
+      {
+        protocol: "https",
+        hostname: "www.vikalpa.org",
+        pathname: "/wp-content/uploads/**",
+      },
     ],
   },
 
