@@ -21,6 +21,20 @@ return [
     'resend' => [
         'key' => env('RESEND_API_KEY'),
     ],
+'gemini' => [
+    'key' => env('GEMINI_API_KEY'),
+    'model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
+],
+
+'worldnews' => [
+    'key' => env('WORLD_NEWS_API_KEY'),
+],
+'induwara' => [
+    'key' => env('INDUWARA_NEWS_API_KEY'),
+],
+'newsapi' => [
+    'key' => env('NEWSAPI_KEY'),
+],
 
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),

@@ -58,7 +58,7 @@ function FooterLink({ href, children }) {
 }
 
 export default function Footer() {
-  const currentYear = new Date().getFullYear();
+ const currentYear = 2026;
 
   return (
     <footer
