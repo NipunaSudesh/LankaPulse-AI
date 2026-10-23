@@ -29,6 +29,9 @@ return [
 'worldnews' => [
     'key' => env('WORLD_NEWS_API_KEY'),
 ],
+'induwara' => [
+    'key' => env('INDUWARA_NEWS_API_KEY'),
+],
 
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
