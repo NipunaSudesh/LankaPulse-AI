@@ -1,14 +1,24 @@
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import React from "react";
 
-export default function CategoriesCard({ category }) {
+export default function CategoriesCard({ category })
+ {
+
+  const router = useRouter();
+
+const openCategory = () => {
+  router.push(`/category?name=${encodeURIComponent(category.name)}`);
+};
   return (
-    <article className="group relative isolate h-64 cursor-pointer overflow-hidden rounded-2xl border border-white/10 bg-[#080d17] shadow-[0_8px_30px_rgba(0,0,0,0.18)] transition-all duration-500 hover:-translate-y-1 hover:border-[#00e6b8]/50 hover:shadow-[0_18px_45px_rgba(0,230,184,0.16)] sm:h-72">
+    <article 
+    onClick={openCategory}
+    className="group relative isolate h-64 cursor-pointer overflow-hidden rounded-2xl border border-white/10 bg-[#080d17] shadow-[0_8px_30px_rgba(0,0,0,0.18)] transition-all duration-500 hover:-translate-y-1 hover:border-[#00e6b8]/50 hover:shadow-[0_18px_45px_rgba(0,230,184,0.16)] sm:h-72">
 
       {/* Background Image */}
       <Image
-        src={category.imgURL}
+        src={category.img_url}
         alt={`${category.name} category`}
         fill
         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
