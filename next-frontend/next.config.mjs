@@ -1,4 +1,3 @@
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   cacheComponents: true,
@@ -19,13 +18,28 @@ const nextConfig = {
       {
         protocol: "https",
         hostname: "blogger.googleusercontent.com",
-        pathname: "/img/**",
+        pathname: "/**",
       },
       {
         protocol: "https",
         hostname: "www.vikalpa.org",
         pathname: "/wp-content/uploads/**",
       },
+      {
+        protocol: "https",
+        hostname: "bsmedia.business-standard.com",
+        pathname: "/_media/**",
+      },
+      {
+        protocol: "https",
+        hostname: "s.yimg.com",
+        pathname: "/**",
+      },
+      {
+  protocol: "https",
+  hostname: "foreignpolicy.com",
+  pathname: "/wp-content/uploads/**",
+},
     ],
   },
 

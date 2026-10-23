@@ -25,6 +25,8 @@ class FetchSriLankaNews extends Command
         $sources = [
             'World News API' => fn () => $this->fetchWorldNews(),
             'Induwara.lk' => fn () => $this->fetchInduwara(),
+        //    'NewsAPI'        => fn () => $this->fetchNewsApiHeadlines(),
+        'NewsAPI' => fn () => $this->fetchNewsApi(),
         ];
 
         foreach ($sources as $sourceName => $fetch) {
@@ -259,6 +261,58 @@ private function fetchInduwara(): array
     return $allArticles;
 }
 
+private function fetchNewsApi(): array
+{
+    $apiKey = config('services.newsapi.key');
+
+    if (!$apiKey) {
+        throw new \RuntimeException('NewsAPI key is missing.');
+    }
+
+    $allArticles = [];
+
+    $response = Http::acceptJson()
+        ->timeout(30)
+        ->get('https://newsapi.org/v2/everything', [
+            'q'        => 'Sri Lanka',
+            'language' => 'en',
+            'sortBy'   => 'publishedAt',
+            'pageSize' => 100,
+            'page'     => 1,
+            'apiKey'   => $apiKey,
+        ]);
+
+    $response->throw();
+
+    $items = $response->json('articles', []);
+
+    foreach ($items as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        // Skip removed/placeholder articles
+        if (($item['title'] ?? '') === '[Removed]') {
+            continue;
+        }
+
+        $allArticles[] = [
+            'title'        => $item['title'] ?? null,
+            'url'          => $item['url'] ?? null,
+            'summary'      => $item['description'] ?? null,
+            'content'      => $item['content'] ?? $item['description'] ?? null,
+            'image_url'    => $item['urlToImage'] ?? null,
+            'category'     => 'Public',
+            'language'     => 'en',
+            'published_at' => $item['publishedAt'] ?? null,
+        ];
+    }
+
+    $this->info('NewsAPI: received ' . count($allArticles) . ' articles.');
+
+    return $allArticles;
+}
+
    private function normalizeArticle(array $item): array
 {
     return [
@@ -339,77 +393,91 @@ private function fetchInduwara(): array
             );
     }
 
-    private function detectCategory(string $title, ?string $summary = null, ?string $content = null): string
+private function detectCategory(string $title, ?string $summary = null, ?string $content = null): string
 {
-    $text = mb_strtolower(
-        trim($title . ' ' . ($summary ?? '') . ' ' . ($content ?? ''))
-    );
+    // Prefer title + summary (more reliable than long content)
+    $text = mb_strtolower(trim(
+        $title . ' ' . ($summary ?? '') . ' ' . mb_substr($content ?? '', 0, 500)
+    ));
 
-    // Order matters — more specific rules first
     $rules = [
         'Weather' => [
-            'rainfall', 'rain', 'thundershower', 'low-pressure', 'weather',
-            'meteorology', 'flood', 'cyclone', 'storm', 'showers',
+            'rainfall', 'heavy rain', 'thundershower', 'low-pressure', 'low pressure',
+            'meteorology', 'weather forecast', 'cyclone', 'storm warning', 'showers will',
+            'department of meteorology',
         ],
         'Sports' => [
-            'cricket', 'odi', 't20', 'test match', 'football', 'rugby',
-            'athletics', 'school games', 'sports', 'match', 'tournament',
+            'cricket', 'odi', 't20', 'test match', 'football', 'rugby', 'athletics',
+            'school games', 'tournament', 'innings', 'wicket', 'run chase', 'batting',
         ],
         'Crime' => [
-            'arrest', 'arrested', 'bribery', 'ciaboc', 'police', 'warrant',
-            'murder', 'remanded', 'court', 'suspect', 'fraud', 'money laundering',
-            'detention', 'prison', 'sentenced',
+            'arrested', 'arrest', 'bribery', 'ciaboc', 'warrant', 'murder', 'remanded',
+            'money laundering', 'suspect', 'detention', 'sentenced', 'fraud case',
+            'police arrested', 'court remanded',
         ],
         'Health' => [
-            'hospital', 'health', 'medical', 'doctor', 'patient', 'disease',
-            'vaccine', 'clinic', 'covid', 'dengue',
+            'hospital', 'medical', 'doctor', 'patient', 'vaccine', 'clinic', 'dengue',
+            'covid', 'health ministry', 'disease',
         ],
         'Education' => [
-            'school', 'university', 'education', 'student', 'exam', 'teacher',
-            'curriculum', 'classroom',
+            'university', 'school', 'student', 'students', 'exam', 'teacher',
+            'education', 'curriculum', 'classroom', 'cfa', 'research challenge',
+            'undergraduate', 'faculty',
         ],
         'Environment' => [
-            'elephant', 'wildlife', 'conservation', 'environment', 'climate',
-            'dam safety', 'forest', 'pollution', 'biodiversity',
+            'elephant', 'wildlife', 'conservation', 'dam safety', 'biodiversity',
+            'forest', 'pollution', 'climate change', 'environmental',
         ],
         'Technology' => [
-            'digital', 'ai ', 'artificial intelligence', 'software', 'e-filing',
-            'cloud', 'cyber', 'app ', 'online system', 'technology',
+            'digital', 'e-filing', 'software', 'artificial intelligence', 'cyber',
+            'online system', 'cloud', 'app launch', 'technology',
         ],
         'Economy' => [
-            'tax', 'revenue', 'imf', 'export', 'import', 'inflation', 'price',
-            'bond', 'rupee', 'economy', 'finance', 'investment', 'gdp',
-            'trade', 'budget', 'central bank', 'interest rate', 'business',
+            'tax', 'revenue', 'imf', 'export', 'import', 'inflation', 'bond',
+            'rupee', 'gdp', 'investment', 'central bank', 'fitch', 'trade deficit',
+            'economy', 'finance', 'stock exchange', 'debenture', 'capital market',
         ],
         'International' => [
-            'united states', 'india', 'japan', 'china', 'eu ', 'foreign',
-            'embassy', 'overseas', 'international', 'diplomatic',
+            'embassy', 'diplomatic', 'united states', 'saudi arabia', 'foreign affairs',
+            'overseas', 'high commissioner',
         ],
         'Culture' => [
-            'actor', 'actress', 'film', 'movie', 'book fair', 'art', 'music',
-            'entertainment', 'drama', 'cinema', 'festival',
+            'actor', 'actress', 'film', 'movie', 'book fair', 'cinema', 'drama',
+            'music', 'festival', 'entertainment',
         ],
         'Public' => [
-            'bus', 'transport', 'power cut', 'electricity', 'water supply',
-            'land release', 'motorcycle', 'public', 'road', 'railway',
-            'utility', 'service',
+            'power cut', 'electricity', 'water supply', 'bus', 'transport',
+            'motorcycle', 'land release', 'railway', 'public service',
         ],
         'Politics' => [
-            'government', 'minister', 'parliament', 'president', 'prime minister',
-            'bill', 'election', 'cabinet', 'mp ', 'party', 'policy', 'constitution',
-            'opposition', 'protest',
+            'parliament', 'minister', 'president', 'prime minister', 'cabinet',
+            'election', 'constitution', 'opposition', 'bill passed', 'government',
+            'mp ', 'policy',
         ],
     ];
 
+    $scores = [];
+
     foreach ($rules as $category => $keywords) {
+        $score = 0;
         foreach ($keywords as $keyword) {
             if (str_contains($text, $keyword)) {
-                return $category;
+                // Longer / more specific keywords get higher weight
+                $score += strlen($keyword) > 8 ? 3 : 2;
             }
+        }
+        if ($score > 0) {
+            $scores[$category] = $score;
         }
     }
 
-    return 'Public'; 
+    if (empty($scores)) {
+        return 'Public';
+    }
+
+    // Highest score wins
+    arsort($scores);
+    return array_key_first($scores);
 }
 
 }

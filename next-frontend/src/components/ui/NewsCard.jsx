@@ -1,7 +1,7 @@
 
 "use client";
 
-import Image from "next/image";
+// import Image from "next/image";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -83,27 +83,33 @@ export default function NewsCard({ article }) {
       className="group flex min-h-48 cursor-pointer overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all duration-300 hover:border-cyan-400/60 hover:shadow-lg hover:shadow-slate-200/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 dark:border-slate-800 dark:bg-slate-900 dark:hover:shadow-black/20"
     >
       {/* Left: Image */}
-      <div className="relative min-h-48 w-[38%] shrink-0 overflow-hidden bg-slate-100 sm:w-[32%] lg:w-[28%] dark:bg-slate-800">
-        <Image
-          src={imageSrc}
-          alt={title || "News article image"}
-          fill
-          sizes="(max-width: 640px) 38vw, 280px"
-          onError={() => setImageError(true)}
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
-        />
+     {/* Left: Image */}
+<div className="relative min-h-48 w-[38%] shrink-0 overflow-hidden bg-slate-100 sm:w-[32%] lg:w-[28%] dark:bg-slate-800">
+  <img
+    src={imageSrc}
+    alt={title || "News article image"}
+    loading="lazy"
+    className={`absolute inset-0 h-full w-full transition-transform duration-500 group-hover:scale-105 ${
+      imageError || !image_url ? "object-contain p-6" : "object-cover"
+    }`}
+    onError={() => {
+      if (!imageError) {
+        setImageError(true);
+      }
+    }}
+  />
 
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10" />
+  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10" />
 
-        <span className="absolute left-2 top-2 max-w-[90%] truncate rounded-md border border-white/20 bg-black/40 px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-wider text-white backdrop-blur-md sm:left-3 sm:top-3 sm:text-[10px]">
-          {categoryName}
-        </span>
+  <span className="absolute left-2 top-2 max-w-[90%] truncate rounded-md border border-white/20 bg-black/40 px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-wider text-white backdrop-blur-md sm:left-3 sm:top-3 sm:text-[10px]">
+    {categoryName}
+  </span>
 
-        <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-md bg-black/40 px-2 py-1.5 text-[9px] font-semibold text-white backdrop-blur-md sm:bottom-3 sm:left-3 sm:text-[10px]">
-          <FiZap className="text-cyan-300" size={12} />
-          LankaPulse AI
-        </span>
-      </div>
+  <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-md bg-black/40 px-2 py-1.5 text-[9px] font-semibold text-white backdrop-blur-md sm:bottom-3 sm:left-3 sm:text-[10px]">
+    <FiZap className="text-cyan-300" size={12} />
+    LankaPulse AI
+  </span>
+</div>
 
       {/* Right: News content */}
       <div className="flex min-w-0 flex-1 flex-col justify-center p-3 sm:p-5 lg:p-6">

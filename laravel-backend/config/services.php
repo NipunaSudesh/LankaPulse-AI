@@ -32,6 +32,9 @@ return [
 'induwara' => [
     'key' => env('INDUWARA_NEWS_API_KEY'),
 ],
+'newsapi' => [
+    'key' => env('NEWSAPI_KEY'),
+],
 
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
