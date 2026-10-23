@@ -9,7 +9,7 @@ export default function CategoriesCard({ category })
   const router = useRouter();
 
 const openCategory = () => {
-  router.push(`/category?name=${encodeURIComponent(category.name)}`);
+  router.push(`/category?name=${encodeURIComponent(category.slug)}`);
 };
   return (
     <article 
