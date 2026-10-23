@@ -14,8 +14,9 @@ import { Pagination, A11y, Autoplay } from "swiper/modules";
 
 import "swiper/css";
 import "swiper/css/pagination";
+import Button from "./ui/Button";
 
-const categories = [
+const categories1 = [
   {
     name: "Politics",
     description: "Government, elections and public policy.",
@@ -81,8 +82,35 @@ const categories = [
 export default function Categories() {
   const swiperRef = useRef(null);
   const [activeIndex, setActiveIndex] = useState(0);
-
+  const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [error, setError] = useState("");
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+   const fetchCategories = async () => {
+  try {
+    setError("");
+
+    const res = await fetch(`${API_BASE_URL}/categories`);
+
+    if (!res.ok) {
+      throw new Error(`HTTP error: ${res.status}`);
+    }
+
+    const result = await res.json();
+
+    setCategories(Array.isArray(result.data) ? result.data : []);
+  } catch (err) {
+    console.error("Failed to fetch Categories:", err);
+    setError("Unable to load categories. Please try again later.");
+  } finally {
+    setLoading(false);
+  }
+};
+
+useEffect(() => {
+  fetchCategories();
+}, []);
 
 useEffect(() => {
   setMounted(true);
@@ -128,29 +156,21 @@ useEffect(() => {
           </div>
 
           <div className="flex gap-2">
-            <button
-              type="button"
-              aria-label="Previous categories"
+          <div className="flex gap-2">
+            <Button
+              variant="pagination"
+              direction="previous"
               onClick={() => swiperRef.current?.slidePrev()}
-              className="group flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background text-text-main transition-all duration-300 hover:border-accent hover:bg-accent hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-            >
-              <FaChevronLeft
-                size={13}
-                className="transition-transform duration-300 group-hover:-translate-x-0.5"
-              />
-            </button>
+              disabled={activeIndex === 0}
+            />
 
-            <button
-              type="button"
-              aria-label="Next categories"
+            <Button
+              variant="pagination"
+              direction="next"
               onClick={() => swiperRef.current?.slideNext()}
-              className="group flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background text-text-main transition-all duration-300 hover:border-accent hover:bg-accent hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-            >
-              <FaChevronRight
-                size={13}
-                className="transition-transform duration-300 group-hover:translate-x-0.5"
-              />
-            </button>
+              disabled={activeIndex >= categories.length - 1}
+            />
+          </div>
           </div>
         </div>
       </div>
@@ -162,9 +182,11 @@ useEffect(() => {
         onSwiper={(swiper) => {
           swiperRef.current = swiper;
         }}
-        onSlideChange={(swiper) => {
-          setActiveIndex(swiper.realIndex);
-        }}
+onSlideChange={(swiper) => {
+  const index = Number(swiper.realIndex);
+
+  setActiveIndex(Number.isFinite(index) && index >= 0 ? index : 0);
+}}
         autoplay={{
           delay: 3500,
           disableOnInteraction: false,
