@@ -14,4 +14,7 @@ Route::prefix('v1')->group(function () {
     Route::get('/test/induwara', [  NewsController::class,
         'fetchInduwara',
     ]);
+    Route::get('/test/newsapi', [  NewsController::class,
+        'testNewsApi',
+    ]);
 });

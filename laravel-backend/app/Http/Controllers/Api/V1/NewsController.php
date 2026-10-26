@@ -12,23 +12,52 @@ use Illuminate\Support\Facades\Log;
 class NewsController extends Controller
 {
     // GET /api/v1/news
-  public function index(Request $request)
+// GET /api/v1/news?category=Technology
+public function index(Request $request)
 {
     $query = NewsArticle::query()
         ->orderByDesc('published_at');
 
     if ($request->filled('category')) {
-        $query->where('category', $request->query('category'));
+        $categoryInput = trim($request->query('category'));
+
+        // Find category using its name or slug.
+        $category = Category::query()
+            ->where('is_active', true)
+            ->where(function ($q) use ($categoryInput) {
+                $q->whereRaw('LOWER(name) = ?', [
+                    strtolower($categoryInput),
+                ])->orWhereRaw('LOWER(slug) = ?', [
+                    strtolower($categoryInput),
+                ]);
+            })
+            ->first();
+
+        $categoryName = $category?->name ?? $categoryInput;
+        $categorySlug = $category?->slug ?? $categoryInput;
+
+        $query->where(function ($q) use (
+            $categoryName,
+            $categorySlug
+        ) {
+            $q->whereRaw('LOWER(category) = ?', [
+                strtolower($categoryName),
+            ])->orWhereRaw('LOWER(category) = ?', [
+                strtolower($categorySlug),
+            ]);
+        });
     }
+
+    $total = (clone $query)->count();
+
+    $articles = $query->get();
 
     return response()->json([
         'success' => true,
-         'total' => $query->count(),
-        'data' => $query->get(),
-       
+        'total' => $total,
+        'data' => $articles,
     ]);
 }
-
     // GET /api/v1/news/{newsArticle}
     public function show(NewsArticle $newsArticle)
     {
@@ -178,4 +207,64 @@ public function categories()
         'data'    => $categories,
     ]);
 }
+
+// GET /api/v1/test/newsapi
+public function testNewsApi()
+{
+    try {
+        $apiKey = config('services.newsapi.key');
+
+        if (!$apiKey) {
+            return response()->json([
+                'success' => false,
+                'message' => 'NewsAPI key is missing in config/services.php',
+            ], 500);
+        }
+
+        $response = Http::acceptJson()
+            ->timeout(30)
+            ->get('https://newsapi.org/v2/everything', [
+                'q'        => 'Sri Lanka',
+                'language' => 'en',
+                'sortBy'   => 'publishedAt',
+                'pageSize' => 20,          // keep it small for testing
+                'page'     => 1,
+                'apiKey'   => $apiKey,
+            ]);
+
+        $response->throw();
+
+        $items = $response->json('articles', []);
+
+        // Clean removed articles
+        $articles = collect($items)
+            ->filter(fn ($item) => ($item['title'] ?? '') !== '[Removed]')
+            ->map(function ($item) {
+                return [
+                    'title'        => $item['title'] ?? null,
+                    'url'          => $item['url'] ?? null,
+                    'summary'      => $item['description'] ?? null,
+                    'content'      => $item['content'] ?? $item['description'] ?? null,
+                    'image_url'    => $item['urlToImage'] ?? null,
+                    'published_at' => $item['publishedAt'] ?? null,
+                    'source'       => $item['source']['name'] ?? null,
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'total'   => $articles->count(),
+            'data'    => $articles,
+        ]);
+    } catch (\Throwable $e) {
+        Log::error('NewsAPI test failed', ['message' => $e->getMessage()]);
+
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage(),
+        ], 500);
+    }
+}
+
 }

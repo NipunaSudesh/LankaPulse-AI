@@ -1,11 +1,12 @@
+"use client"
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import HeroCard from "@/components/HomeHero";
 import Header from "@/components/ui/Header";
 import CategoriesCard from "@/components/ui/CategoriesCard";
 
 
-const categories = [
+const categories1 = [
   {
     name: "Politics",
     description: "Government, elections and public policy.",
@@ -68,7 +69,36 @@ const categories = [
   },
 ];
 export default function CategoriesPage() {
+const [categories ,setCategories] =useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const fetchCategories =async()=>{
+        if (!API_BASE_URL) {
+        throw new Error("API base URL is not configured.");
+      }
+      
+  try {
+    const res =await fetch(`${API_BASE_URL}/categories`);
+     if(!res.ok){
+      throw new Error(`HTTP error: ${res.status}`);
+     }
+     const result =await res.json();
 
+    //  const catogory =Array.isArray(result.data) ? (result.data):[];
+     setCategories(result.data);
+     console.log("categories",result.data)
+
+  } catch (error) {
+    console.log("Unable to load",error)
+    setError("Unable to load news. Please try again later.");
+  }finally{
+setLoading(false);  }
+}
+
+useEffect(()=>{
+  fetchCategories();
+},[]);
   return (
     <main>
         <div className=" container-custom flex flex-col  gap-4">
@@ -84,6 +114,22 @@ export default function CategoriesPage() {
             title="Browse Categories"
             description="Explore the latest news by topic. Choose a category to discover stories, updates, and insights that matter to you."
 />
+ {loading && (
+        <p className="py-12 text-center text-text-muted">
+          Loading categories...
+        </p>
+      )}
+
+      {!loading && error && (
+        <p className="py-12 text-center text-red-500">{error}</p>
+      )}
+      {!loading && !error && categories.length === 0 && (
+        <p className="py-12 text-center text-text-muted">
+          No categories found.
+        </p>
+      )}
+
+      {!loading && !error && categories.length > 0 && (
         <div className=" grid grid-col-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {categories.map((category)=>(
             <CategoriesCard
@@ -91,6 +137,7 @@ export default function CategoriesPage() {
             category={category}/>
         ))}
         </div>
+      )}
         </div>
 </div>
     </main>
