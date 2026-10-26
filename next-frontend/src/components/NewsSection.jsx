@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import Header from "./ui/Header";
 import NewsCard from "./ui/NewsCard";
 import {  FaChevronLeft,  FaChevronRight,} from "react-icons/fa";
+import Button from "./ui/Button";
 const ITEMS_PER_PAGE = 20;
 
 export default function NewsSection() {
@@ -92,35 +93,23 @@ export default function NewsSection() {
         </p>
 
         <div className="flex shrink-0 gap-2">
-          <button
-            type="button"
-            aria-label="Previous page"
-            onClick={() =>
-              setCurrentPage((page) => Math.max(1, page - 1))
-            }
-            disabled={currentPage === 1}
-            className="group flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background text-text-main transition-all duration-300 hover:border-accent hover:bg-accent hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <FaChevronLeft
-              size={13}
-              className="transition-transform duration-300 group-hover:-translate-x-0.5"
+            <Button
+              variant="pagination"
+              direction="previous"
+              onClick={() =>
+                setCurrentPage((page) => Math.max(1, page - 1))
+              }
+              disabled={currentPage === 1}
             />
-          </button>
 
-          <button
-            type="button"
-            aria-label="Next page"
-            onClick={() =>
-              setCurrentPage((page) => Math.min(totalPages, page + 1))
-            }
-            disabled={currentPage === totalPages}
-            className="group flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background text-text-main transition-all duration-300 hover:border-accent hover:bg-accent hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <FaChevronRight
-              size={13}
-              className="transition-transform duration-300 group-hover:translate-x-0.5"
+            <Button
+              variant="pagination"
+              direction="next"
+              onClick={() =>
+                setCurrentPage((page) => Math.min(totalPages, page + 1))
+              }
+              disabled={currentPage === totalPages}
             />
-          </button>
         </div>
       </div>
     )}
