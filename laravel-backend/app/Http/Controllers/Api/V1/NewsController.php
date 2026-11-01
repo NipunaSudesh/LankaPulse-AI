@@ -267,4 +267,150 @@ public function testNewsApi()
     }
 }
 
+/*
+|--------------------------------------------------------------------------
+| GET /api/v1/test/lankadeepa
+|--------------------------------------------------------------------------
+*/
+
+public function testLankadeepa()
+{
+    try {
+        $feedUrl = 'https://www.lankadeepa.lk/RSS_Feeds/latest_news';
+
+        $response = Http::withHeaders([
+            'User-Agent' => 'LankaPulse-AI/1.0',
+            'Accept' => 'application/rss+xml, application/xml, text/xml',
+        ])
+            ->timeout(45)
+            ->get($feedUrl);
+
+        $response->throw();
+
+        libxml_use_internal_errors(true);
+
+        $xmlBody = $response->body();
+
+        // Extract the RSS document if extra content exists.
+        if (preg_match(
+            '/<rss\b[^>]*>[\s\S]*?<\/rss>/i',
+            $xmlBody,
+            $matches
+        )) {
+            $xmlBody = $matches[0];
+        }
+
+        $xml = simplexml_load_string(
+            $xmlBody,
+            'SimpleXMLElement',
+            LIBXML_NONET | LIBXML_NOCDATA
+        );
+
+        if ($xml === false) {
+            $errors = libxml_get_errors();
+
+            $errorMessages = [];
+
+            foreach ($errors as $error) {
+                $errorMessages[] = trim($error->message);
+            }
+
+            libxml_clear_errors();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to parse Lankadeepa RSS feed.',
+                'errors' => $errorMessages,
+                'response_preview' => substr($response->body(), 0, 1000),
+            ], 500);
+        }
+
+        // Get RSS items.
+        $items = $xml->channel->item ?? [];
+
+        $articles = [];
+        $debugItems = [];
+
+        foreach ($items as $item) {
+            $title = trim((string) ($item->title ?? ''));
+
+            $url = trim((string) ($item->link ?? ''));
+
+            // Try GUID if link is missing.
+            if (!$url) {
+                $url = trim((string) ($item->guid ?? ''));
+            }
+
+            // Publication date.
+            $publishedAt = trim((string) (
+                $item->pubDate
+                ?? $item->published
+                ?? $item->updated
+                ?? ''
+            ));
+
+            // Description.
+            $description = trim(strip_tags(
+                (string) ($item->description ?? '')
+            ));
+
+            // Keep diagnostic information for every item.
+            $debugItems[] = [
+                'title_found' => $title !== '',
+                'title' => $title,
+                'link_found' => $url !== '',
+                'link' => $url,
+                'valid_url' => filter_var(
+                    $url,
+                    FILTER_VALIDATE_URL
+                ) !== false,
+                'published_at' => $publishedAt ?: null,
+                'raw_item' => $item->asXML(),
+            ];
+
+            if (
+                !$title ||
+                !$url ||
+                !filter_var($url, FILTER_VALIDATE_URL)
+            ) {
+                continue;
+            }
+
+            $articles[] = [
+                'title' => $title,
+                'url' => $url,
+                'summary' => $description ?: null,
+                'image_url' => null,
+                'category' => 'General',
+                'language' => 'si',
+                'published_at' => $publishedAt ?: null,
+                'source_name' => 'Lankadeepa',
+            ];
+        }
+
+        libxml_clear_errors();
+
+        return response()->json([
+            'success' => true,
+            'source' => 'Lankadeepa',
+            'http_status' => $response->status(),
+            'total_rss_items' => count($items),
+            'valid_articles' => count($articles),
+            'data' => $articles,
+            'debug_items' => $debugItems,
+        ]);
+
+    } catch (\Throwable $e) {
+        Log::error('Lankadeepa RSS test failed', [
+            'message' => $e->getMessage(),
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage(),
+        ], 500);
+    }
+}
+
+
 }

@@ -5,479 +5,1016 @@ namespace App\Console\Commands;
 use App\Models\NewsArticle;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Throwable;
 
 class FetchSriLankaNews extends Command
 {
     protected $signature = 'news:fetch-sri-lanka';
 
-    protected $description =
-        'Fetch Sri Lankan news, prevent duplicates and remove articles older than 30 days';
+    protected $description = 'Fetch Sri Lankan news from APIs and RSS feeds';
+
+    private int $saved = 0;
+    private int $duplicates = 0;
+    private int $invalid = 0;
+    private int $failedSources = 0;
 
     public function handle(): int
     {
-        $created = 0;
-        $skipped = 0;
-        $failed = 0;
+        $this->info('Starting LankaPulse AI news collection...');
+        $this->newLine();
 
         $sources = [
             'World News API' => fn () => $this->fetchWorldNews(),
             'Induwara.lk' => fn () => $this->fetchInduwara(),
-        //    'NewsAPI'        => fn () => $this->fetchNewsApiHeadlines(),
-        'NewsAPI' => fn () => $this->fetchNewsApi(),
+            'NewsData.io' => fn () => $this->fetchNewsData(),
+            'NewsAPI' => fn () => $this->fetchNewsApi(),
         ];
 
-        foreach ($sources as $sourceName => $fetch) {
-            try {
-                $articles = $fetch();
+        // Add enabled RSS feeds from services.php
+        foreach (config('services.rss.feeds', []) as $feed) {
+            if (empty($feed['enabled'])) {
+                continue;
+            }
 
-                $this->info(
-                    "{$sourceName}: received " . count($articles) . ' articles.'
-                );
+            $name = $feed['name'];
+
+            $sources[$name] = fn () => $this->fetchRssFeed($feed);
+        }
+
+        foreach ($sources as $sourceName => $fetcher) {
+            try {
+                $this->info("Fetching from {$sourceName}...");
+
+                $articles = $fetcher();
+
+                $this->displayLatestArticles($sourceName, $articles);
 
                 foreach ($articles as $article) {
-                    $title = trim((string) ($article['title'] ?? ''));
-                    $url = trim((string) ($article['url'] ?? ''));
-
-                    if (
-                        $title === '' ||
-                        !$this->isValidArticleUrl($url)
-                    ) {
-                        $skipped++;
-                        continue;
-                    }
-
-                    try {
-                        $wasCreated = DB::transaction(
-                            function () use ($article, $title, $url, $sourceName) {
-                                // Load existing URL/title pairs for duplicate checks.
-                                $existing = NewsArticle::query()
-                                    ->get(['url', 'title']);
-
-                                $candidateUrl = $this->normalizeUrl($url);
-                                $candidateTitle = $this->normalizeTitle($title);
-
-                                foreach ($existing as $saved) {
-                                    if (
-                                        $this->normalizeUrl((string) $saved->url)
-                                            === $candidateUrl
-                                        || $this->normalizeTitle(
-                                            (string) $saved->title
-                                        ) === $candidateTitle
-                                    ) {
-                                        return false;
-                                    }
-                                }
-
-                                $publishedAt = null;
-
-                                if (!empty($article['published_at'])) {
-                                    try {
-                                        $publishedAt = Carbon::parse(
-                                            $article['published_at']
-                                        );
-                                    } catch (\Throwable $e) {
-                                        $publishedAt = null;
-                                    }
-                                }
-
-                                NewsArticle::create([
-                                    'title' => $title,
-                                    'url' => $url,
-                                    'summary' => $article['summary'] ?? null,
-                                    'content' => $article['content'] ?? null,
-                                    'image_url' => $article['image_url'] ?? null,
-                                    'source_name' => $sourceName,
-                                   'category' => $this->detectCategory(
-                                    $title,
-                                    $article['summary'] ?? null,
-                                    $article['content'] ?? null
-                                ),
-                                'language' => $article['language'] ?? 'en',
-                                'published_at' => $publishedAt,
-                                ]);
-
-                         return true;
-                            }
-                        );
-
-                        if ($wasCreated) {
-                            $created++;
-                        } else {
-                            $skipped++;
-                        }
-                    } catch (\Throwable $e) {
-                        // A concurrent import may have inserted the same URL.
-                        // Log the error and continue with the next article.
-                        Log::warning('News article could not be saved', [
-                            'url' => $url,
-                            'message' => $e->getMessage(),
-                        ]);
-
-                        $skipped++;
-                    }
+                    $this->saveArticle($article, $sourceName);
                 }
-            } catch (\Throwable $e) {
-                $failed++;
 
-                Log::error("{$sourceName} import failed", [
-                    'message' => $e->getMessage(),
-                ]);
+            } catch (Throwable $e) {
+                $this->failedSources++;
 
                 $this->error(
-                    "{$sourceName} failed. Check storage/logs/laravel.log."
+                    "{$sourceName} failed: " . $e->getMessage()
+                );
+
+                report($e);
+            }
+
+            $this->newLine();
+        }
+
+        // Delete articles older than 30 days
+        $deleted = NewsArticle::where(
+            'published_at',
+            '<',
+            now()->subDays(30)
+        )->delete();
+
+        $this->info('News collection completed.');
+
+        $this->table(
+            ['Result', 'Count'],
+            [
+                ['New articles saved', $this->saved],
+                ['Duplicates skipped', $this->duplicates],
+                ['Invalid articles skipped', $this->invalid],
+                ['Old articles deleted', $deleted],
+                ['Failed sources', $this->failedSources],
+            ]
+        );
+
+        return self::SUCCESS;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | World News API
+    |--------------------------------------------------------------------------
+    */
+
+    private function fetchWorldNews(): array
+    {
+        $apiKey = config('services.worldnews.key');
+
+        if (!$apiKey) {
+            throw new \RuntimeException(
+                'WORLD_NEWS_API_KEY is missing.'
+            );
+        }
+
+        $allArticles = [];
+
+        for ($page = 0; $page < 4; $page++) {
+            $offset = $page * 100;
+
+            $response = Http::acceptJson()
+                ->withHeaders([
+                    'x-api-key' => $apiKey,
+                ])
+                ->timeout(45)
+                ->get('https://api.worldnewsapi.com/search-news', [
+                    'source-country' => 'lk',
+                    'language' => 'en',
+                    'earliest-publish-date' => now()
+                        ->subDays(30)
+                        ->toDateString(),
+                    'sort' => 'publish-time',
+                    'sort-direction' => 'DESC',
+                    'number' => 100,
+                    'offset' => $offset,
+                ]);
+
+            // Stop if the daily API quota is reached.
+            // Keep articles already fetched from previous pages.
+            if ($response->status() === 402) {
+                $this->warn(
+                    'World News API daily quota reached. ' .
+                    'Keeping articles already fetched.'
+                );
+
+                break;
+            }
+
+            $response->throw();
+
+            $items = $response->json('news', []);
+
+            if (!is_array($items) || empty($items)) {
+                break;
+            }
+
+            $this->info(
+                'World News API page ' . ($page + 1) .
+                ': received ' . count($items) . ' articles.'
+            );
+
+            foreach ($items as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+
+                $allArticles[] = $this->normalizeArticle([
+                    'title' => $item['title'] ?? null,
+                    'url' => $item['url'] ?? null,
+                    'summary' => $item['summary'] ?? null,
+                    'content' => null,
+                    'image_url' => null,
+                    'language' => $item['language'] ?? 'en',
+                    'published_at' => $item['publish_date'] ?? null,
+                ]);
+            }
+
+            if (count($items) < 100) {
+                break;
+            }
+        }
+
+        $this->info(
+            'World News API: received ' . count($allArticles) . ' articles.'
+        );
+
+        return $allArticles;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Induwara.lk API
+    |--------------------------------------------------------------------------
+    */
+
+    private function fetchInduwara(): array
+    {
+        $articles = [];
+
+        $offset = 0;
+        $limit = 100;
+
+        for ($page = 0; $page < 5; $page++) {
+            $response = Http::acceptJson()
+                ->timeout(45)
+                ->get('https://induwara.lk/api/v1/news', [
+                    'limit' => $limit,
+                    'offset' => $offset,
+                ]);
+
+            $response->throw();
+
+            $items = $response->json('data.posts', []);
+
+            if (!is_array($items) || empty($items)) {
+                break;
+            }
+
+            // Temporary diagnostic: inspect actual date-related fields.
+            if ($page === 0 && isset($items[0])) {
+                $firstItem = $items[0];
+
+                $dateFields = array_filter(
+                    $firstItem,
+                    fn ($value, $key) =>
+                        preg_match(
+                            '/date|time|created|publish|updated/i',
+                            (string) $key
+                        ),
+                    ARRAY_FILTER_USE_BOTH
+                );
+
+                $this->line(
+                    'Induwara date fields: ' .
+                    json_encode($dateFields)
+                );
+            }
+
+            foreach ($items as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+
+                $articles[] = $this->normalizeArticle([
+                    'title' => $item['title']
+                        ?? $item['name']
+                        ?? null,
+
+                    'url' => $item['url']
+                        ?? $item['link']
+                        ?? null,
+
+                    'summary' => $item['excerpt']
+                        ?? $item['description']
+                        ?? $item['summary']
+                        ?? null,
+
+                    'content' => null,
+                    'image_url' => null,
+
+                    'language' => $item['language'] ?? 'en',
+
+                    'published_at' => $item['publishedAt']
+                        ?? $item['updatedAt']
+                        ?? $item['published_at']
+                        ?? $item['published']
+                        ?? $item['publish_date']
+                        ?? $item['created_at']
+                        ?? $item['createdAt']
+                        ?? $item['date']
+                        ?? null,
+                ]);
+            }
+
+            if (count($items) < $limit) {
+                break;
+            }
+
+            $offset += $limit;
+        }
+
+        $this->info(
+            'Induwara.lk: received ' . count($articles) . ' articles.'
+        );
+
+        return $articles;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | NewsData.io API
+    |--------------------------------------------------------------------------
+    */
+
+    private function fetchNewsData(): array
+    {
+        $apiKey = config('services.newsdata.key');
+
+        if (!$apiKey) {
+            throw new \RuntimeException(
+                'NEWS_DATA_API_KEY is missing.'
+            );
+        }
+
+        $response = Http::acceptJson()
+            ->timeout(45)
+            ->get('https://newsdata.io/api/1/latest', [
+                'apikey' => $apiKey,
+                'country' => 'lk',
+                'language' => 'en',
+                'size' => 10,
+            ]);
+
+        $response->throw();
+
+        $items = $response->json('results', []);
+
+        if (!is_array($items)) {
+            return [];
+        }
+
+        $articles = [];
+
+        foreach ($items as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $articles[] = $this->normalizeArticle([
+                'title' => $item['title'] ?? null,
+                'url' => $item['link'] ?? null,
+                'summary' => null,
+                'content' => null,
+                'image_url' => null,
+                'language' => $item['language'] ?? 'en',
+                'published_at' => $item['pubDate'] ?? null,
+                'source_name' => $item['source_name'] ?? 'NewsData.io',
+            ]);
+        }
+
+        $this->info(
+            'NewsData.io: received ' . count($articles) . ' articles.'
+        );
+
+        return $articles;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | NewsAPI
+    |--------------------------------------------------------------------------
+    */
+
+    private function fetchNewsApi(): array
+    {
+        $apiKey = config('services.newsapi.key');
+
+        if (!$apiKey) {
+            throw new \RuntimeException(
+                'NEWSAPI_KEY is missing.'
+            );
+        }
+
+        $response = Http::acceptJson()
+            ->timeout(45)
+            ->get('https://newsapi.org/v2/everything', [
+                'q' => '"Sri Lanka"',
+                'language' => 'en',
+                'sortBy' => 'publishedAt',
+                'pageSize' => 100,
+                'apiKey' => $apiKey,
+            ]);
+
+        $response->throw();
+
+        $items = $response->json('articles', []);
+
+        if (!is_array($items)) {
+            return [];
+        }
+
+        $articles = [];
+
+        foreach ($items as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $articles[] = $this->normalizeArticle([
+                'title' => $item['title'] ?? null,
+                'url' => $item['url'] ?? null,
+                'summary' => $item['description'] ?? null,
+                'content' => null,
+                'image_url' => null,
+                'published_at' => $item['publishedAt'] ?? null,
+                'source_name' => $item['source']['name'] ?? 'NewsAPI',
+                'language' => 'en',
+            ]);
+        }
+
+        $this->info(
+            'NewsAPI: received ' . count($articles) . ' articles.'
+        );
+
+        return $articles;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | RSS Feed Parser - Lankadeepa and News21
+    |--------------------------------------------------------------------------
+    */
+
+   
+
+private function fetchRssFeed(array $feed): array
+{
+    $feedUrl = trim($feed['url']);
+    $feedName = $feed['name'];
+    $feedLanguage = $feed['language'] ?? 'en';
+
+    $this->info("Fetching from {$feedName}...");
+    $this->line("Requesting URL: {$feedUrl}");
+
+    /*
+    |--------------------------------------------------------------------------
+    | 1. Send HTTP Request
+    |--------------------------------------------------------------------------
+    */
+
+    $response = Http::withHeaders([
+        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+        'Accept' => 'application/rss+xml, application/xml, text/xml, */*',
+    ])
+        ->connectTimeout(20)
+        ->timeout(45)
+        ->get($feedUrl);
+
+    /*
+    |--------------------------------------------------------------------------
+    | 2. Handle HTTP Errors
+    |--------------------------------------------------------------------------
+    */
+
+    if (!$response->successful()) {
+        $this->error("{$feedName} HTTP Error: " . $response->status());
+
+        $this->line('Requested URL: ' . $feedUrl);
+
+        $this->line(
+            'Content-Type: ' .
+            $response->header('Content-Type')
+        );
+
+        $this->line(
+            'Response: ' .
+            substr($response->body(), 0, 500)
+        );
+
+        throw new \RuntimeException(
+            "{$feedName} returned HTTP " . $response->status()
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | 3. Extract RSS XML
+    |--------------------------------------------------------------------------
+    */
+
+    libxml_use_internal_errors(true);
+
+    $rssBody = $response->body();
+
+    // Some servers return additional HTML around the RSS document.
+    if (preg_match(
+        '/<rss\b[^>]*>[\s\S]*?<\/rss>/i',
+        $rssBody,
+        $matches
+    )) {
+        $rssBody = $matches[0];
+    }
+
+    $xml = simplexml_load_string(
+        $rssBody,
+        'SimpleXMLElement',
+        LIBXML_NONET | LIBXML_NOCDATA
+    );
+
+    if ($xml === false) {
+        $errors = libxml_get_errors();
+
+        $this->error("Unable to parse RSS feed: {$feedName}");
+
+        foreach (array_slice($errors, 0, 3) as $error) {
+            $this->line(trim($error->message));
+        }
+
+        $this->line('Response preview:');
+        $this->line(substr($response->body(), 0, 1000));
+
+        libxml_clear_errors();
+
+        throw new \RuntimeException(
+            "Unable to parse RSS feed: {$feedName}"
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | 4. Detect RSS Items
+    |--------------------------------------------------------------------------
+    */
+
+    $items = [];
+
+    // Standard RSS 2.0
+    if (isset($xml->channel->item)) {
+        $items = $xml->channel->item;
+    }
+
+    // Atom
+    elseif (isset($xml->entry)) {
+        $items = $xml->entry;
+    }
+
+    $this->info(
+        'Detected RSS items: ' . count($items)
+    );
+
+    $articles = [];
+
+    /*
+    |--------------------------------------------------------------------------
+    | 5. Extract Article Information
+    |--------------------------------------------------------------------------
+    */
+
+    foreach ($items as $item) {
+
+        // Article title
+        $title = trim(
+            (string) ($item->title ?? '')
+        );
+
+        // Standard RSS URL
+        $url = trim(
+            (string) ($item->link ?? '')
+        );
+
+        // Atom URL fallback
+        if (empty($url)) {
+            foreach ($item->link as $link) {
+                $attributes = $link->attributes();
+
+                $href = trim(
+                    (string) ($attributes['href'] ?? '')
+                );
+
+                if (!empty($href)) {
+                    $url = $href;
+                    break;
+                }
+            }
+        }
+
+        // GUID fallback
+        if (empty($url) && isset($item->guid)) {
+            $guid = trim(
+                (string) $item->guid
+            );
+
+            if (filter_var($guid, FILTER_VALIDATE_URL)) {
+                $url = $guid;
+            }
+        }
+
+        // Article description
+        $description = trim(
+            (string) ($item->description ?? '')
+        );
+
+        // Full content namespace
+        $contentNamespace = $item->children(
+            'http://purl.org/rss/1.0/modules/content/'
+        );
+
+        $content = trim(
+            (string) ($contentNamespace->encoded ?? '')
+        );
+
+        if (empty($description)) {
+            $description = $content;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Extract Image
+        |--------------------------------------------------------------------------
+        */
+
+        $imageUrl = '';
+
+        // Direct image element
+        if (isset($item->image)) {
+            $imageUrl = trim(
+                (string) $item->image
+            );
+        }
+
+        // Enclosure image
+        if (empty($imageUrl) && isset($item->enclosure)) {
+            $attributes = $item->enclosure->attributes();
+
+            $imageUrl = trim(
+                (string) ($attributes['url'] ?? '')
+            );
+        }
+
+        // Media RSS image
+        if (empty($imageUrl)) {
+            $media = $item->children(
+                'http://search.yahoo.com/mrss/'
+            );
+
+            if (isset($media->content)) {
+                $attributes = $media->content->attributes();
+
+                $imageUrl = trim(
+                    (string) ($attributes['url'] ?? '')
+                );
+            }
+
+            if (empty($imageUrl) && isset($media->thumbnail)) {
+                $attributes = $media->thumbnail->attributes();
+
+                $imageUrl = trim(
+                    (string) ($attributes['url'] ?? '')
                 );
             }
         }
 
-        // Delete articles published more than 30 days ago.
-        $cutoff = now()->subDays(30);
+        // Extract image from description HTML
+        if (empty($imageUrl)) {
+            $html = $description . ' ' . $content;
 
-        $deleted = NewsArticle::query()
-            ->whereNotNull('published_at')
-            ->where('published_at', '<', $cutoff)
-            ->delete();
-
-        $this->info("New articles saved: {$created}");
-        $this->info("Duplicates/invalid articles skipped: {$skipped}");
-        $this->info("Old articles deleted: {$deleted}");
-        $this->info("Failed sources: {$failed}");
-
-        return $failed === count($sources)
-            ? self::FAILURE
-            : self::SUCCESS;
-    }
-
-
-private function fetchWorldNews(): array
-{
-    $apiKey = config('services.worldnews.key');
-
-    if (!$apiKey) {
-        throw new \RuntimeException(
-            'World News API key is missing.'
-        );
-    }
-
-    $allArticles = [];
-    $limit = 100;
-    $maxPages = 20;
-
-    for ($page = 0; $page < $maxPages; $page++) {
-        $offset = $page * $limit;
-
-        $response = Http::acceptJson()
-            ->withHeaders(['x-api-key' => $apiKey])
-            ->timeout(60)
-            ->get('https://api.worldnewsapi.com/search-news', [
-                'source-country' => 'lk',
-                'language' => 'en',
-                'earliest-publish-date' => Carbon::now('UTC')
-                    ->subDays(30)
-                    ->format('Y-m-d H:i:s'),
-                'sort' => 'publish-time',
-                'sort-direction' => 'DESC',
-                'number' => $limit,
-                'offset' => $offset,
-            ]);
-
-        $response->throw();
-
-        $items = $response->json('news', []);
-
-        if (!is_array($items) || count($items) === 0) {
-            break;
-        }
-
-        foreach ($items as $item) {
-            if (is_array($item)) {
-                $allArticles[] = $this->normalizeArticle($item);
+            if (preg_match(
+                '/<img[^>]+src=["\']([^"\']+)["\']/i',
+                $html,
+                $imageMatch
+            )) {
+                $imageUrl = trim($imageMatch[1]);
             }
         }
 
-        $this->info(
-            'World News API page ' . ($page + 1) .
-            ': received ' . count($items) . ' articles.'
+        /*
+        |--------------------------------------------------------------------------
+        | Extract Publication Date
+        |--------------------------------------------------------------------------
+        */
+
+        $publishedAt = trim((string) (
+            $item->pubDate
+            ?? $item->published
+            ?? $item->updated
+            ?? ''
+        ));
+
+        // Dublin Core date fallback
+        if (empty($publishedAt)) {
+            $dc = $item->children(
+                'http://purl.org/dc/elements/1.1/'
+            );
+
+            $publishedAt = trim(
+                (string) ($dc->date ?? '')
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Clean Summary
+        |--------------------------------------------------------------------------
+        */
+
+        $summary = trim(
+            html_entity_decode(
+                strip_tags($description),
+                ENT_QUOTES | ENT_HTML5,
+                'UTF-8'
+            )
         );
 
-        if (count($items) < $limit) {
-            break;
-        }
-    }
+        /*
+        |--------------------------------------------------------------------------
+        | Debug Lankadeepa
+        |--------------------------------------------------------------------------
+        */
 
-    return $allArticles;
+        if ($feedName === 'Lankadeepa') {
+            $this->line('------------------------------');
+            $this->line("Title: {$title}");
+            $this->line("URL: {$url}");
+            $this->line("Image: {$imageUrl}");
+            $this->line("Published: {$publishedAt}");
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Article
+        |--------------------------------------------------------------------------
+        */
+
+        if (empty($title) || empty($url)) {
+            continue;
+        }
+
+    // Validate URL while allowing Sinhala Unicode characters.
+$urlParts = parse_url($url);
+
+if (
+    empty($urlParts['scheme']) ||
+    !in_array($urlParts['scheme'], ['http', 'https'], true) ||
+    empty($urlParts['host'])
+) {
+    continue;
 }
 
+        /*
+        |--------------------------------------------------------------------------
+        | Normalize Article
+        |--------------------------------------------------------------------------
+        */
 
-  
-private function fetchInduwara(): array
-{
-    $allArticles = [];
-    $limit = 100;
-    $maxPages = 20;
-
-    for ($page = 0; $page < $maxPages; $page++) {
-        $offset = $page * $limit;
-
-        $response = Http::acceptJson()
-            ->timeout(30)
-            ->get('https://induwara.lk/api/v1/news', [
-                'limit' => $limit,
-                'offset' => $offset,
-            ]);
-
-        $response->throw();
-
-        $payload = $response->json();
-        $items = $payload['data']['posts'] ?? [];
-
-        if (!is_array($items) || count($items) === 0) {
-            break;
-        }
-
-        foreach ($items as $item) {
-            if (is_array($item)) {
-                $allArticles[] = $this->normalizeArticle($item);
-            }
-        }
-
-        $this->info(
-            'Induwara.lk page ' . ($page + 1) .
-            ': received ' . count($items) . ' articles.'
-        );
-
-        $total = (int) ($payload['data']['total'] ?? 0);
-
-        if (
-            count($items) < $limit ||
-            ($total > 0 && $offset + count($items) >= $total)
-        ) {
-            break;
-        }
-    }
-
-    return $allArticles;
-}
-
-private function fetchNewsApi(): array
-{
-    $apiKey = config('services.newsapi.key');
-
-    if (!$apiKey) {
-        throw new \RuntimeException('NewsAPI key is missing.');
-    }
-
-    $allArticles = [];
-
-    $response = Http::acceptJson()
-        ->timeout(30)
-        ->get('https://newsapi.org/v2/everything', [
-            'q'        => 'Sri Lanka',
-            'language' => 'en',
-            'sortBy'   => 'publishedAt',
-            'pageSize' => 100,
-            'page'     => 1,
-            'apiKey'   => $apiKey,
+        $articles[] = $this->normalizeArticle([
+            'title' => $title,
+            'url' => $url,
+            'summary' => $summary ?: null,
+            'content' => $content ?: null,
+            'image_url' => $imageUrl ?: null,
+            'language' => $feedLanguage,
+            'published_at' => $publishedAt ?: null,
+            'source_name' => $feedName,
         ]);
+    }
 
-    $response->throw();
+    /*
+    |--------------------------------------------------------------------------
+    | 6. Clear XML Errors
+    |--------------------------------------------------------------------------
+    */
 
-    $items = $response->json('articles', []);
+    libxml_clear_errors();
 
-    foreach ($items as $item) {
-        if (!is_array($item)) {
-            continue;
+    /*
+    |--------------------------------------------------------------------------
+    | 7. Return Articles
+    |--------------------------------------------------------------------------
+    */
+
+    $this->info(
+        "{$feedName}: received " .
+        count($articles) .
+        ' articles.'
+    );
+
+    return $articles;
+}
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Normalize article data
+    |--------------------------------------------------------------------------
+    */
+
+    private function normalizeArticle(array $article): array
+    {
+        $publishedAt = null;
+
+        if (!empty($article['published_at'])) {
+            try {
+                $publishedAt = Carbon::parse(
+                    $article['published_at']
+                )->toDateTimeString();
+
+            } catch (Throwable $e) {
+                $publishedAt = null;
+            }
         }
 
-        // Skip removed/placeholder articles
-        if (($item['title'] ?? '') === '[Removed]') {
-            continue;
-        }
+        $title = isset($article['title'])
+            ? trim(strip_tags((string) $article['title']))
+            : null;
 
-        $allArticles[] = [
-            'title'        => $item['title'] ?? null,
-            'url'          => $item['url'] ?? null,
-            'summary'      => $item['description'] ?? null,
-            'content'      => $item['content'] ?? $item['description'] ?? null,
-            'image_url'    => $item['urlToImage'] ?? null,
-            'category'     => 'Public',
-            'language'     => 'en',
-            'published_at' => $item['publishedAt'] ?? null,
+        $summary = isset($article['summary'])
+            ? trim(strip_tags((string) $article['summary']))
+            : null;
+
+        return [
+            'title' => $title,
+
+            'url' => isset($article['url'])
+                ? trim((string) $article['url'])
+                : null,
+
+            'summary' => $summary ?: null,
+            'content' => null,
+            'image_url' => null,
+
+            'category' => $this->detectCategory(
+                ($title ?? '') . ' ' . ($summary ?? '')
+            ),
+
+            'language' => $article['language'] ?? 'en',
+
+            'published_at' => $publishedAt,
+
+            'source_name' => $article['source_name'] ?? null,
         ];
     }
 
-    $this->info('NewsAPI: received ' . count($allArticles) . ' articles.');
+    /*
+    |--------------------------------------------------------------------------
+    | Save article and avoid duplicates
+    |--------------------------------------------------------------------------
+    */
 
-    return $allArticles;
-}
-
-   private function normalizeArticle(array $item): array
-{
-    return [
-        'title' => $item['title']
-            ?? $item['headline']
-            ?? $item['name']
-            ?? null,
-
-        'url' => $item['url']
-            ?? $item['link']
-            ?? $item['article_url']
-            ?? $item['canonical_url']
-            ?? null,
-
-        'summary' => $item['summary']
-            ?? $item['description']
-            ?? $item['excerpt']
-            ?? null,
-
-        'content' => $item['text']
-            ?? $item['content']
-            ?? $item['body']
-            ?? null,
-
-        'image_url' => $item['image']
-            ?? $item['image_url']
-            ?? $item['thumbnail']
-            ?? null,
-
-        'category' => $item['category']
-            ?? $item['section']
-            ?? 'General',
-
-        'language' => $item['language'] ?? 'en',
-
-        'published_at' => $item['publish_date']
-            ?? $item['published_at']
-            ?? $item['publishedAt']
-            ?? $item['date']
-            ?? null,
-    ];
-}
-
-    private function normalizeTitle(string $title): string
-    {
-        $title = mb_strtolower(trim($title));
-        $title = preg_replace('/[^\p{L}\p{N}\s]/u', '', $title) ?? $title;
-
-        return preg_replace('/\s+/u', ' ', $title) ?? $title;
-    }
-
-    private function normalizeUrl(string $url): string
-    {
-        $parts = parse_url(trim($url));
-
-        if (!$parts || empty($parts['host'])) {
-            return strtolower(trim($url));
+    private function saveArticle(
+        array $article,
+        string $sourceName
+    ): void {
+        if (
+            empty($article['title']) ||
+            empty($article['url']) ||
+            !filter_var($article['url'], FILTER_VALIDATE_URL)
+        ) {
+            $this->invalid++;
+            return;
         }
 
-        $host = strtolower($parts['host']);
+        // Remove tracking query parameters
+        $urlWithoutQuery = strtok($article['url'], '?');
 
-        // Treat www.example.com and example.com as the same host.
-        $host = preg_replace('/^www\./', '', $host) ?? $host;
+        $normalizedUrl = rtrim(
+            $urlWithoutQuery ?: $article['url'],
+            '/'
+        );
 
-        $path = rtrim($parts['path'] ?? '/', '/');
+        $normalizedTitle = Str::lower(
+            preg_replace(
+                '/\s+/',
+                ' ',
+                trim($article['title'])
+            )
+        );
 
-        // Ignore scheme, query string and fragment.
-        return $host . $path;
+        $existing = NewsArticle::query()
+            ->where('url', $normalizedUrl)
+            ->orWhereRaw(
+                'LOWER(TRIM(title)) = ?',
+                [$normalizedTitle]
+            )
+            ->first();
+
+        if ($existing) {
+            $this->duplicates++;
+            return;
+        }
+
+        try {
+            NewsArticle::create([
+                'title' => $article['title'],
+                'url' => $normalizedUrl,
+                'summary' => $article['summary'] ?? null,
+                'content' => null,
+                'image_url' => null,
+                'category' => $article['category'] ?? 'General',
+                'language' => $article['language'] ?? 'en',
+                'published_at' => $article['published_at'] ?? null,
+                'source_name' => $article['source_name']
+                    ?? $sourceName,
+            ]);
+
+            $this->saved++;
+
+        } catch (Throwable $e) {
+            $this->invalid++;
+            report($e);
+        }
     }
 
-    private function isValidArticleUrl(string $url): bool
+    /*
+    |--------------------------------------------------------------------------
+    | Category detection
+    |--------------------------------------------------------------------------
+    */
+
+    private function detectCategory(string $text): string
     {
-        return filter_var($url, FILTER_VALIDATE_URL) !== false
-            && in_array(
-                strtolower((string) parse_url($url, PHP_URL_SCHEME)),
-                ['http', 'https'],
-                true
-            );
-    }
+        $text = Str::lower($text);
 
-private function detectCategory(string $title, ?string $summary = null, ?string $content = null): string
-{
-    // Prefer title + summary (more reliable than long content)
-    $text = mb_strtolower(trim(
-        $title . ' ' . ($summary ?? '') . ' ' . mb_substr($content ?? '', 0, 500)
-    ));
+        $categories = [
+            'Business' => [
+                'business', 'economy', 'economic', 'finance',
+                'market', 'stock', 'cse', 'bank', 'inflation',
+                'investment', 'company', 'trade', 'export',
+                'import', 'rupee', 'tax', 'budget',
+            ],
 
-    $rules = [
-        'Weather' => [
-            'rainfall', 'heavy rain', 'thundershower', 'low-pressure', 'low pressure',
-            'meteorology', 'weather forecast', 'cyclone', 'storm warning', 'showers will',
-            'department of meteorology',
-        ],
-        'Sports' => [
-            'cricket', 'odi', 't20', 'test match', 'football', 'rugby', 'athletics',
-            'school games', 'tournament', 'innings', 'wicket', 'run chase', 'batting',
-        ],
-        'Crime' => [
-            'arrested', 'arrest', 'bribery', 'ciaboc', 'warrant', 'murder', 'remanded',
-            'money laundering', 'suspect', 'detention', 'sentenced', 'fraud case',
-            'police arrested', 'court remanded',
-        ],
-        'Health' => [
-            'hospital', 'medical', 'doctor', 'patient', 'vaccine', 'clinic', 'dengue',
-            'covid', 'health ministry', 'disease',
-        ],
-        'Education' => [
-            'university', 'school', 'student', 'students', 'exam', 'teacher',
-            'education', 'curriculum', 'classroom', 'cfa', 'research challenge',
-            'undergraduate', 'faculty',
-        ],
-        'Environment' => [
-            'elephant', 'wildlife', 'conservation', 'dam safety', 'biodiversity',
-            'forest', 'pollution', 'climate change', 'environmental',
-        ],
-        'Technology' => [
-            'digital', 'e-filing', 'software', 'artificial intelligence', 'cyber',
-            'online system', 'cloud', 'app launch', 'technology',
-        ],
-        'Economy' => [
-            'tax', 'revenue', 'imf', 'export', 'import', 'inflation', 'bond',
-            'rupee', 'gdp', 'investment', 'central bank', 'fitch', 'trade deficit',
-            'economy', 'finance', 'stock exchange', 'debenture', 'capital market',
-        ],
-        'International' => [
-            'embassy', 'diplomatic', 'united states', 'saudi arabia', 'foreign affairs',
-            'overseas', 'high commissioner',
-        ],
-        'Culture' => [
-            'actor', 'actress', 'film', 'movie', 'book fair', 'cinema', 'drama',
-            'music', 'festival', 'entertainment',
-        ],
-        'Public' => [
-            'power cut', 'electricity', 'water supply', 'bus', 'transport',
-            'motorcycle', 'land release', 'railway', 'public service',
-        ],
-        'Politics' => [
-            'parliament', 'minister', 'president', 'prime minister', 'cabinet',
-            'election', 'constitution', 'opposition', 'bill passed', 'government',
-            'mp ', 'policy',
-        ],
-    ];
+            'Politics' => [
+                'president', 'prime minister', 'parliament',
+                'government', 'minister', 'election', 'political',
+                'politics', 'cabinet', 'opposition',
+            ],
 
-    $scores = [];
+            'Technology' => [
+                'technology', 'tech', 'artificial intelligence',
+                'software', 'digital', 'cyber', 'internet',
+                'mobile', 'app', 'computer', 'ai',
+            ],
 
-    foreach ($rules as $category => $keywords) {
-        $score = 0;
-        foreach ($keywords as $keyword) {
-            if (str_contains($text, $keyword)) {
-                // Longer / more specific keywords get higher weight
-                $score += strlen($keyword) > 8 ? 3 : 2;
+            'Sports' => [
+                'cricket', 'football', 'rugby', 'sport',
+                'tournament', 'match', 'player', 'team',
+                'championship', 'olympics',
+            ],
+
+            'Education' => [
+                'education', 'university', 'school', 'student',
+                'exam', 'examination', 'scholarship',
+                'admission', 'academic',
+            ],
+
+            'Health' => [
+                'health', 'hospital', 'medical', 'doctor',
+                'disease', 'patient', 'medicine', 'healthcare',
+            ],
+
+            'Entertainment' => [
+                'entertainment', 'movie', 'film', 'music',
+                'actor', 'actress', 'celebrity', 'concert',
+            ],
+
+            'Crime' => [
+                'police', 'arrest', 'crime', 'murder',
+                'fraud', 'court', 'suspect', 'investigation',
+                'scam', 'robbery', 'accident',
+            ],
+        ];
+
+        $scores = [];
+
+        foreach ($categories as $category => $keywords) {
+            $score = 0;
+
+            foreach ($keywords as $keyword) {
+                if (Str::contains($text, $keyword)) {
+                    $score++;
+                }
             }
-        }
-        if ($score > 0) {
+
             $scores[$category] = $score;
         }
+
+        arsort($scores);
+
+        $bestCategory = array_key_first($scores);
+
+        if (!$bestCategory || $scores[$bestCategory] === 0) {
+            return 'General';
+        }
+
+        return $bestCategory;
     }
 
-    if (empty($scores)) {
-        return 'Public';
+    /*
+    |--------------------------------------------------------------------------
+    | Display latest articles
+    |--------------------------------------------------------------------------
+    */
+
+    private function displayLatestArticles(
+        string $sourceName,
+        array $articles
+    ): void {
+        $this->info("Latest articles from {$sourceName}:");
+
+        $validArticles = array_filter(
+            $articles,
+            fn ($article) => !empty($article['title'])
+        );
+
+        usort($validArticles, function ($a, $b) {
+            return strtotime($b['published_at'] ?? '1970-01-01')
+                <=> strtotime($a['published_at'] ?? '1970-01-01');
+        });
+
+        $latest = array_slice($validArticles, 0, 5);
+
+        if (empty($latest)) {
+            $this->warn('No articles received.');
+            return;
+        }
+
+        foreach ($latest as $article) {
+            $date = 'Unknown date';
+
+            if (!empty($article['published_at'])) {
+                try {
+                    $date = Carbon::parse($article['published_at'])
+                        ->timezone('Asia/Colombo')
+                        ->format('Y-m-d H:i:s');
+
+                } catch (Throwable $e) {
+                    // Keep Unknown date
+                }
+            }
+
+            $this->line(
+                $date . ' - ' . $article['title']
+            );
+        }
     }
-
-    // Highest score wins
-    arsort($scores);
-    return array_key_first($scores);
-}
-
 }
