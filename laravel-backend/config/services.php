@@ -40,14 +40,6 @@ return [
 ],
 
 
-'newsapi' => [
-    'key' => env('NEWSAPI_KEY'),
-],
-
-'newsdata' => [
-    'key' => env('NEWS_DATA_API_KEY'),
-],
-
 'rss' => [
     'feeds' => [
 [

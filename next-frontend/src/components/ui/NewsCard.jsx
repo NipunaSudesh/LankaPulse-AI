@@ -17,6 +17,16 @@ export default function NewsCard({ article }) {
 
   if (!article) return null;
 
+        //   {
+        //     "title_found": true,
+        //     "title": "මිනිසුන්ට පහර දෙන්න කාටවත් අයිතියක් නෑ’’",
+        //     "link_found": true,
+        //     "link": "https://www.lankadeepa.lk/latest_news/මිනිසුන්ට-පහර-දෙන්න-කාටවත්-අයිතියක්-නෑ’’/1-700079",
+        //     "valid_url": false,
+        //     "published_at": "2026-11-01T11:09:00+05:30",
+        //     "raw_item": "<item>  \n                <title>මිනිසුන්ට පහර දෙන්න කාටවත් අයිතියක් නෑ’’</title> \n                <link>https://www.lankadeepa.lk/latest_news/මිනිසුන්ට-පහර-දෙන්න-කාටවත්-අයිතියක්-නෑ’’/1-700079</link>\n                <!--guid></guid -->\n\n 
+        // },
+        // {
   const {
     id,
     title,

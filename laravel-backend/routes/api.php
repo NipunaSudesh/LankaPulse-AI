@@ -7,18 +7,9 @@ Route::prefix('v1')->group(function () {
     Route::get('/categories', [NewsController::class, 'categories']);
     Route::get('/news/{newsArticle}', [NewsController::class, 'show']);
 
-    Route::get('/test/world-news', [ NewsController::class,
-        'fetchWorldNews',
-    ]);
+    Route::get('/test/world-news', [NewsController::class, 'testWorldNews']);
 
-    Route::get('/test/induwara', [  NewsController::class,
-        'fetchInduwara',
-    ]);
-    Route::get('/test/newsapi', [  NewsController::class,
-        'testNewsApi',
-    ]);
-    Route::get(
-    '/test/lankadeepa',
-    [NewsController::class, 'testLankadeepa']
-);
+    Route::get('/test/induwara', [NewsController::class, 'testInduwara']);
+
+    Route::get('/test/newsapi', [NewsController::class, 'testNewsApi']);
 });
