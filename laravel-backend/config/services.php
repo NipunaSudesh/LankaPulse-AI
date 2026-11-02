@@ -35,6 +35,27 @@ return [
 'newsapi' => [
     'key' => env('NEWSAPI_KEY'),
 ],
+'newsdata' => [
+    'key' => env('NEWS_DATA_API_KEY'),
+],
+
+
+'rss' => [
+    'feeds' => [
+[
+    'name' => 'Lankadeepa',
+    'url' => 'https://www.lankadeepa.lk/rss/latest_news/1',
+    'enabled' => true,
+    'language' => 'si',
+],
+        [
+            'name' => 'News21',
+            'url' => 'https://www.news21.lk/english/rss/latest-posts',
+            'enabled' => true,
+            'language' => 'en',
+        ],
+    ],
+],
 
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),

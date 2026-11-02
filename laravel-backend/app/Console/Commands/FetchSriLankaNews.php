@@ -24,9 +24,9 @@ class FetchSriLankaNews extends Command
 
         $sources = [
             'World News API' => fn () => $this->fetchWorldNews(),
-            'Induwara.lk' => fn () => $this->fetchInduwara(),
-        //    'NewsAPI'        => fn () => $this->fetchNewsApiHeadlines(),
-        'NewsAPI' => fn () => $this->fetchNewsApi(),
+            'Induwara.lk'    => fn () => $this->fetchInduwara(),
+            'NewsAPI'        => fn () => $this->fetchNewsApi(),
+            'Lankadeepa'     => fn () => $this->fetchLankadeepa(),
         ];
 
         foreach ($sources as $sourceName => $fetch) {
@@ -313,6 +313,151 @@ private function fetchNewsApi(): array
     return $allArticles;
 }
 
+
+// private function fetchLankadeepa(): array
+// {
+// $feedUrl = 'https://www.lankadeepa.lk/rss/latest_news/1';
+//     try {
+//         $response = Http::timeout(30)
+//             ->withHeaders([
+//                 'User-Agent' => 'LankaPulseAI/1.0',
+//             ])
+//             ->get($feedUrl);
+
+//         if (!$response->successful()) {
+//             $this->error('Lankadeepa RSS request failed: ' . $response->status());
+//             return [];
+//         }
+
+//         libxml_use_internal_errors(true);
+
+//         $xml = simplexml_load_string(
+//             $response->body(),
+//             'SimpleXMLElement',
+//             LIBXML_NOCDATA
+//         );
+
+//         if (!$xml || !isset($xml->channel->item)) {
+//             $this->error('Unable to parse Lankadeepa RSS feed.');
+//             return [];
+//         }
+
+//         $namespaces = $xml->getNamespaces(true);
+//         $articles = [];
+
+//         foreach ($xml->channel->item as $item) {
+
+//             $title = trim((string) $item->title);
+//             $url = trim((string) $item->link);
+//             $description = (string) $item->description;
+
+//             // Extract content:encoded if available.
+//             $content = '';
+
+//             if (isset($namespaces['content'])) {
+//                 $contentItems = $item->children($namespaces['content']);
+
+//                 $content = (string) ($contentItems->encoded ?? '');
+//             }
+
+//             // Extract image from description or article content.
+//             $imageUrl = null;
+
+//             $html = $description . ' ' . $content;
+
+//             if (preg_match(
+//                 '/<img[^>]+src=["\']([^"\']+)["\']/i',
+//                 $html,
+//                 $imageMatch
+//             )) {
+//                 $imageUrl = html_entity_decode($imageMatch[1]);
+//             }
+
+//             // Check media:content image if available.
+//             if (!$imageUrl && isset($namespaces['media'])) {
+//                 $media = $item->children($namespaces['media']);
+
+//                 if (isset($media->content)) {
+//                     $attributes = $media->content->attributes();
+
+//                     $imageUrl = isset($attributes['url'])
+//                         ? (string) $attributes['url']
+//                         : null;
+//                 }
+//             }
+
+//             // Check enclosure image.
+//             if (!$imageUrl && isset($item->enclosure)) {
+//                 $attributes = $item->enclosure->attributes();
+
+//                 if (
+//                     isset($attributes['type']) &&
+//                     str_starts_with((string) $attributes['type'], 'image/')
+//                 ) {
+//                     $imageUrl = (string) $attributes['url'];
+//                 }
+//             }
+
+//             // Extract publication date.
+//             $publishedAt = null;
+
+//             if (!empty((string) $item->pubDate)) {
+//                 try {
+//                     $publishedAt = \Carbon\Carbon::parse(
+//                         (string) $item->pubDate
+//                     )->toDateTimeString();
+//                 } catch (\Throwable $e) {
+//                     $publishedAt = now()->toDateTimeString();
+//                 }
+//             }
+
+//             // Basic validation.
+//             if (empty($title) || empty($url)) {
+//                 continue;
+//             }
+
+// if (!$this->isValidArticleUrl($url)) {
+//     continue;
+// }
+
+//             // Clean summary.
+//             $summary = trim(
+//                 html_entity_decode(
+//                     strip_tags($description),
+//                     ENT_QUOTES | ENT_HTML5,
+//                     'UTF-8'
+//                 )
+//             );
+
+//             $articles[] = [
+//                 'title' => $title,
+//                 'url' => $url,
+//                 'summary' => $summary,
+//                 'content' => null,
+//                 'image_url' => $imageUrl,
+//                 'source_name' => 'Lankadeepa',
+//                 'category' => 'Public',
+//                 'language' => 'si',
+//                 'published_at' => $publishedAt,
+//             ];
+//         }
+
+//         libxml_clear_errors();
+
+//         $this->info(
+//             'Lankadeepa: received ' . count($articles) . ' articles.'
+//         );
+
+//         return $articles;
+
+//     } catch (\Throwable $e) {
+//         $this->error('Lankadeepa error: ' . $e->getMessage());
+
+//         return [];
+//     }
+// }
+
+
    private function normalizeArticle(array $item): array
 {
     return [
@@ -383,15 +528,41 @@ private function fetchNewsApi(): array
         return $host . $path;
     }
 
-    private function isValidArticleUrl(string $url): bool
-    {
-        return filter_var($url, FILTER_VALIDATE_URL) !== false
-            && in_array(
-                strtolower((string) parse_url($url, PHP_URL_SCHEME)),
-                ['http', 'https'],
-                true
-            );
+private function isValidArticleUrl(string $url): bool
+{
+    $url = trim($url);
+
+    if ($url === '') {
+        return false;
     }
+
+    // Encode non-ASCII path segments so validation works
+    $parts = parse_url($url);
+
+    if (!$parts || empty($parts['scheme']) || empty($parts['host'])) {
+        return false;
+    }
+
+    $scheme = strtolower($parts['scheme']);
+    if (!in_array($scheme, ['http', 'https'], true)) {
+        return false;
+    }
+
+    // Rebuild a safe URL for validation if needed
+    $host = $parts['host'];
+    $path = $parts['path'] ?? '/';
+
+    // Percent-encode non-ASCII characters in the path
+    $encodedPath = preg_replace_callback(
+        '/[^\x20-\x7E]/u',
+        fn ($m) => rawurlencode($m[0]),
+        $path
+    );
+
+    $checkUrl = $scheme . '://' . $host . $encodedPath;
+
+    return filter_var($checkUrl, FILTER_VALIDATE_URL) !== false;
+}
 
 private function detectCategory(string $title, ?string $summary = null, ?string $content = null): string
 {

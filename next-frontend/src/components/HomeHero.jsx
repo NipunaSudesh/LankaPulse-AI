@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Button from "./ui/Button";
 
 export default function HomeHero({
+  button=false,
   label = "LANKA NEWS INTELLIGENCE",
   title = "Stay Informed.",
   highlight = "Think Smarter.",
@@ -117,7 +118,7 @@ export default function HomeHero({
             <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
               <Button
                 variant="primary"
-                onClick={() => router.push("/news")}
+                onClick={() => router.push("/latest-news")}
                 className="min-h-12 rounded-xl px-6 py-3 text-sm font-bold transition-all duration-300"
               >
                 Explore Latest News
@@ -133,8 +134,9 @@ export default function HomeHero({
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
               </Button>
-
-              <Button
+              {
+                !button && (
+                      <Button
                 variant="outline"
                 onClick={() =>
                   document.getElementById("categories")?.scrollIntoView({
@@ -157,6 +159,9 @@ export default function HomeHero({
                   <path d="m7 10 5 5 5-5" />
                 </svg>
               </Button>
+                )
+              }
+
             </div>
 
             {/* Trust points */}

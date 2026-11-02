@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Header from "@/components/ui/Header";
-import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import Button from "@/components/ui/Button";
+import NewsCard from "@/components/ui/NewsCard";
 
 const ITEMS_PER_PAGE = 20;
 
@@ -46,11 +47,64 @@ const categoryContent = {
   },
 };
 
-export default function NewsPage() {
-  const [currentPage, setCurrentPage] = useState(1);
+function CategoryNews() {
+  const searchParams = useSearchParams();
+  const categoryName = searchParams.get("name")?.trim() || "Technology";
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-  // Replace this with your fetched articles.
-  const sortedArticles = [];
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortedArticles, setSortedArticles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const content = categoryContent[categoryName] || {
+    sub: `Explore ${categoryName}`,
+    title: `Latest ${categoryName} News`,
+    description: `Discover the latest ${categoryName.toLowerCase()} news and developments from Sri Lanka and around the world.`,
+  };
+
+  const fetchCategoryNews = async (signal) => {
+    try {
+      if (!API_BASE_URL) {
+        throw new Error("API base URL is not configured.");
+      }
+
+      const res = await fetch(
+        `${API_BASE_URL}/news?category=${encodeURIComponent(categoryName)}`,
+        { signal }
+      );
+
+      if (!res.ok) {
+        throw new Error(`HTTP error: ${res.status}`);
+      }
+
+      const result = await res.json();
+      const articles = Array.isArray(result.data) ? result.data : [];
+
+      setSortedArticles(articles);
+      setCurrentPage(1);
+      setError("");
+
+      console.log("Category news:", articles);
+    } catch (err) {
+      if (err.name !== "AbortError") {
+        console.error("Failed to fetch category news:", err);
+        setError("Unable to load news. Please try again later.");
+      }
+    } finally {
+      if (!signal.aborted) {
+        setLoading(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetchCategoryNews(controller.signal);
+
+    return () => controller.abort();
+  }, [API_BASE_URL, categoryName]);
 
   const totalPages = Math.ceil(
     sortedArticles.length / ITEMS_PER_PAGE
@@ -64,17 +118,17 @@ export default function NewsPage() {
   );
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="container-custom mt-10 flex flex-col gap-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0 flex-1">
           <Header
-            sub={categoryContent.sub}
-            title={categoryContent.title}
-            description={categoryContent.description}
+            sub={content.sub}
+            title={content.title}
+            description={content.description}
           />
         </div>
 
-        {totalPages > 1 && (
+        {totalPages > 0 && !loading && !error && (
           <div className="flex shrink-0 items-center justify-between gap-4 sm:justify-end">
             <p className="whitespace-nowrap text-xs font-medium tracking-wide text-text-muted">
               Showing{" "}
@@ -82,35 +136,78 @@ export default function NewsPage() {
                 {startIndex + 1}
               </span>
               {" - "}
-              {Math.min(startIndex + ITEMS_PER_PAGE, sortedArticles.length)}
+              {Math.min(
+                startIndex + ITEMS_PER_PAGE,
+                sortedArticles.length
+              )}
               {" of "}
               {sortedArticles.length} articles
             </p>
 
-            <div className="flex shrink-0 gap-2">
+            {totalPages > 1 && (
+              <div className="flex shrink-0 gap-2">
                 <Button
-                    variant="pagination"
-                    direction="previous"
-                    onClick={() =>
+                  variant="pagination"
+                  direction="previous"
+                  onClick={() =>
                     setCurrentPage((page) => Math.max(1, page - 1))
-                    }
-                    disabled={currentPage === 1}
+                  }
+                  disabled={currentPage === 1}
                 />
 
                 <Button
-                    variant="pagination"
-                    direction="next"
-                    onClick={() =>
-                    setCurrentPage((page) => Math.min(totalPages, page + 1))
-                    }
-                    disabled={currentPage === totalPages}
+                  variant="pagination"
+                  direction="next"
+                  onClick={() =>
+                    setCurrentPage((page) =>
+                      Math.min(totalPages, page + 1)
+                    )
+                  }
+                  disabled={currentPage === totalPages}
                 />
-            </div>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Render paginatedArticles here using your NewsCard component. */}
+      {loading && (
+        <p className="py-12 text-center text-text-muted">
+          Loading {categoryName.toLowerCase()} news...
+        </p>
+      )}
+
+      {!loading && error && (
+        <p className="py-12 text-center text-red-500">{error}</p>
+      )}
+
+      {!loading && !error && sortedArticles.length === 0 && (
+        <p className="py-12 text-center text-text-muted">
+          No {categoryName.toLowerCase()} news articles found.
+        </p>
+      )}
+
+          {!loading && !error && paginatedArticles.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {paginatedArticles.map((article) => (
+            <NewsCard key={article.id} article={article} />
+          ))}
+        </div>
+      )}
     </div>
+  );
+}
+
+export default function NewsPage() {
+  return (
+    <Suspense
+      fallback={
+        <p className="py-12 text-center text-text-muted">
+          Loading category news...
+        </p>
+      }
+    >
+      <CategoryNews />
+    </Suspense>
   );
 }
