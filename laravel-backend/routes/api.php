@@ -12,4 +12,8 @@ Route::prefix('v1')->group(function () {
     Route::get('/test/induwara', [NewsController::class, 'testInduwara']);
 
     Route::get('/test/newsapi', [NewsController::class, 'testNewsApi']);
+    Route::get('/test/lankadeepa', [
+    NewsController::class,
+    'testLankadeepa'
+]);
 });
