@@ -207,6 +207,70 @@ class NewsController extends Controller
     }
 
     
+
+public function testHelakuru()
+{
+    try {
+        $apiKey = config('services.rapidapi.key');
+        $apiHost = config('services.rapidapi.host');
+
+        if (!$apiKey || !$apiHost) {
+            return response()->json([
+                'success' => false,
+                'message' => 'RapidAPI credentials are missing.',
+            ], 500);
+        }
+
+        $response = Http::acceptJson()
+            ->withHeaders([
+                'x-rapidapi-host' => $apiHost,
+                'x-rapidapi-key' => $apiKey,
+            ])
+            ->timeout(40)
+            ->get('https://helakuru-esana-news-api.p.rapidapi.com/');
+
+        // Decode the original response.
+        $payload = $response->json();
+
+        return response()->json([
+            'http_success' => $response->successful(),
+            'http_status' => $response->status(),
+            'content_type' => $response->header('Content-Type'),
+            'response_is_json' => is_array($payload),
+            'top_level_keys' => is_array($payload)
+                ? array_keys($payload)
+                : [],
+            'api_status' => is_array($payload)
+                ? ($payload['status'] ?? null)
+                : null,
+            'article_count' => is_array($payload)
+                && isset($payload['data'])
+                && is_array($payload['data'])
+                    ? count($payload['data'])
+                    : null,
+            'response_preview' => is_array($payload)
+                ? $payload
+                : mb_substr($response->body(), 0, 3000),
+        ], $response->successful() ? 200 : 502);
+
+    } catch (\Throwable $e) {
+
+        Log::error('Helakuru diagnostic failed', [
+            'message' => $e->getMessage(),
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Helakuru diagnostic request failed.',
+            'error' => config('app.debug')
+                ? $e->getMessage()
+                : null,
+        ], 500);
+    }
+}
+
+
+    
 // public function testLankadeepa()
 // {
 //     try {

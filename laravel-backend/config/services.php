@@ -57,6 +57,17 @@ return [
     ],
 ],
 
+'rapidapi' => [
+    'key' => env('RAPIDAPI_KEY'),
+    'host' => env('RAPIDAPI_HOST'),
+],
+
+'facebook' => [
+    'page_id' => env('FACEBOOK_PAGE_ID'),
+    'page_access_token' => env('FACEBOOK_PAGE_ACCESS_TOKEN'),
+    'graph_version' => env('FACEBOOK_GRAPH_VERSION', 'v26.0'),
+],
+
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),

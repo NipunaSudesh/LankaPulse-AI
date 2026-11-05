@@ -26,7 +26,9 @@ class FetchSriLankaNews extends Command
             'World News API' => fn () => $this->fetchWorldNews(),
             'Induwara.lk'    => fn () => $this->fetchInduwara(),
             'NewsAPI'        => fn () => $this->fetchNewsApi(),
-            'Lankadeepa'     => fn () => $this->fetchLankadeepa(),
+                'Helakuru Esana' => fn () => $this->fetchHelakuru(),
+
+            // 'Lankadeepa'     => fn () => $this->fetchLankadeepa(),
         ];
 
         foreach ($sources as $sourceName => $fetch) {
@@ -40,36 +42,47 @@ class FetchSriLankaNews extends Command
                 foreach ($articles as $article) {
                     $title = trim((string) ($article['title'] ?? ''));
                     $url = trim((string) ($article['url'] ?? ''));
+if ($title === '') {
+    $this->warn("EMPTY TITLE [{$sourceName}]");
+    $skipped++;
+    continue;
+}
 
-                    if (
-                        $title === '' ||
-                        !$this->isValidArticleUrl($url)
-                    ) {
-                        $skipped++;
-                        continue;
-                    }
+if (!$this->isValidArticleUrl($url)) {
+    $this->warn("INVALID URL [{$sourceName}]: {$url}");
+    $skipped++;
+    continue;
+}
 
                     try {
                         $wasCreated = DB::transaction(
                             function () use ($article, $title, $url, $sourceName) {
                                 // Load existing URL/title pairs for duplicate checks.
-                                $existing = NewsArticle::query()
-                                    ->get(['url', 'title']);
+$existing = NewsArticle::query()
+    ->get(['url', 'title', 'source_name']);
 
-                                $candidateUrl = $this->normalizeUrl($url);
-                                $candidateTitle = $this->normalizeTitle($title);
+$candidateUrl = $this->normalizeUrl($url);
+$candidateTitle = $this->normalizeTitle($title);
 
-                                foreach ($existing as $saved) {
-                                    if (
-                                        $this->normalizeUrl((string) $saved->url)
-                                            === $candidateUrl
-                                        || $this->normalizeTitle(
-                                            (string) $saved->title
-                                        ) === $candidateTitle
-                                    ) {
-                                        return false;
-                                    }
-                                }
+foreach ($existing as $saved) {
+
+    // Same URL means the article is already stored.
+    $savedUrl = $this->normalizeUrl((string) $saved->url);
+
+    if ($savedUrl === $candidateUrl) {
+        return false;
+    }
+
+    // Only compare duplicate titles within the same source.
+    $savedTitle = $this->normalizeTitle((string) $saved->title);
+
+    if (
+        $saved->source_name === $sourceName &&
+        $savedTitle === $candidateTitle
+    ) {
+        return false;
+    }
+}
 
                                 $publishedAt = null;
 
@@ -126,9 +139,7 @@ class FetchSriLankaNews extends Command
                     'message' => $e->getMessage(),
                 ]);
 
-                $this->error(
-                    "{$sourceName} failed. Check storage/logs/laravel.log."
-                );
+$this->error("{$sourceName} failed: " . $e->getMessage());
             }
         }
 
@@ -311,6 +322,171 @@ private function fetchNewsApi(): array
     $this->info('NewsAPI: received ' . count($allArticles) . ' articles.');
 
     return $allArticles;
+}
+
+
+private function fetchHelakuru(): array
+{
+    $apiKey = config('services.rapidapi.key');
+    $apiHost = config('services.rapidapi.host');
+
+    if (!$apiKey || !$apiHost) {
+        throw new \RuntimeException('Helakuru RapidAPI credentials are missing.');
+    }
+
+    $response = Http::acceptJson()
+        ->withHeaders([
+            'x-rapidapi-host' => $apiHost,
+            'x-rapidapi-key' => $apiKey,
+        ])
+        ->timeout(40)
+        ->retry(2, 1000)
+        ->get('https://helakuru-esana-news-api.p.rapidapi.com/');
+
+    $response->throw();
+
+    $payload = $response->json();
+    $newsData = is_array($payload) ? ($payload['news_data'] ?? null) : null;
+
+    if (!is_array($newsData)) {
+        throw new \RuntimeException('Invalid Helakuru news_data response.');
+    }
+
+    if (($newsData['status']['success'] ?? false) !== true) {
+        throw new \RuntimeException('Helakuru API returned an unsuccessful response.');
+    }
+
+    $items = $newsData['data'] ?? [];
+
+    if (!is_array($items)) {
+        return [];
+    }
+
+    // Debug: shows which fields each article really has.
+    if (!empty($items[0]) && is_array($items[0])) {
+        $this->info('Helakuru item keys: ' . implode(', ', array_keys($items[0])));
+    }
+
+    $articles = [];
+
+    foreach ($items as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $titleEn = trim((string) ($item['titleEn'] ?? ''));
+        $titleSi = trim((string) ($item['titleSi'] ?? ''));
+
+        $useEnglish = $titleEn !== '';
+        $title = $useEnglish ? $titleEn : $titleSi;
+
+        if ($title === '') {
+            continue;
+        }
+
+        $contentEn = $this->extractHelakuruContent(
+            is_array($item['contentEn'] ?? null) ? $item['contentEn'] : []
+        );
+        $contentSi = $this->extractHelakuruContent(
+            is_array($item['contentSi'] ?? null) ? $item['contentSi'] : []
+        );
+
+        $content = $useEnglish ? $contentEn : $contentSi;
+
+        if ($content === '') {
+            $content = $useEnglish ? $contentSi : $contentEn;
+        }
+
+        $paragraphs = preg_split('/\n+/', trim($content)) ?: [];
+        $summary = trim($paragraphs[0] ?? '');
+
+        // URL: try known fields, then fall back to one built from the id.
+        $url = null;
+
+        foreach (['share_url', 'shareUrl', 'url', 'link', 'web_url'] as $key) {
+            if (!empty($item[$key]) && is_string($item[$key])) {
+                $url = trim($item[$key]);
+                break;
+            }
+        }
+
+        if (!$url && !empty($item['id'])) {
+            // Unique per article, so duplicate checks work.
+            $url = 'https://www.helakuru.lk/esana/news/' . $item['id'];
+        }
+
+        // Published date: try known fields, otherwise use now.
+        $publishedAt = null;
+
+        foreach (['published', 'published_at', 'publishedAt', 'date', 'time', 'created_at'] as $key) {
+            if (!empty($item[$key])) {
+                try {
+                    $publishedAt = Carbon::parse($item[$key])->toDateTimeString();
+                    break;
+                } catch (\Throwable $e) {
+                    $publishedAt = null;
+                }
+            }
+        }
+
+        if (!$publishedAt) {
+            $publishedAt = now()->toDateTimeString();
+        }
+
+        $articles[] = [
+            'title' => $title,
+            'url' => $url,
+            'summary' => $summary ?: null,
+            'content' => $content ?: null,
+            'image_url' => $item['thumb'] ?? $item['cover'] ?? $item['image'] ?? null,
+            'category' => 'General',
+            'language' => $useEnglish ? 'en' : 'si',
+            'published_at' => $publishedAt,
+        ];
+    }
+
+    $this->info('Helakuru Esana: received ' . count($articles) . ' articles.');
+
+    return $articles;
+}
+
+/**
+ * Extract readable text from Helakuru content blocks.
+ */
+private function extractHelakuruContent(array $blocks): string
+{
+    $paragraphs = [];
+
+    foreach ($blocks as $block) {
+        if (!is_array($block)) {
+            continue;
+        }
+
+        if (($block['type'] ?? '') !== 'text') {
+            continue;
+        }
+
+        $text = trim((string) ($block['data'] ?? ''));
+
+        if ($text === '') {
+            continue;
+        }
+
+        // Remove HTML tags such as <em>.
+        $text = html_entity_decode(
+            strip_tags($text),
+            ENT_QUOTES | ENT_HTML5,
+            'UTF-8'
+        );
+
+        $text = trim($text);
+
+        if ($text !== '') {
+            $paragraphs[] = $text;
+        }
+    }
+
+    return implode("\n\n", $paragraphs);
 }
 
 
