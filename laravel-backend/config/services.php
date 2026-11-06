@@ -63,9 +63,12 @@ return [
 ],
 
 'facebook' => [
+    'graph_version' => env('FACEBOOK_GRAPH_VERSION', 'v26.0'),
     'page_id' => env('FACEBOOK_PAGE_ID'),
     'page_access_token' => env('FACEBOOK_PAGE_ACCESS_TOKEN'),
-    'graph_version' => env('FACEBOOK_GRAPH_VERSION', 'v26.0'),
+    'auto_publish' => env('FACEBOOK_AUTO_PUBLISH', false),
+    'daily_limit' => (int) env('FACEBOOK_DAILY_LIMIT', 20),
+    'max_article_age_hours' => (int) env('FACEBOOK_MAX_ARTICLE_AGE_HOURS', 48),
 ],
 
     'ses' => [

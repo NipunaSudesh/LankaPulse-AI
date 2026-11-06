@@ -48,3 +48,21 @@ export async function fetchCategories() {
 export async function fetchNewsById(id) {
   return fetchJSON(API_ENDPOINTS.newsById(id));
 }
+
+export async function getFacebookPosts(page = 1) {
+  const res = await fetch(
+    `${API_BASE_URL}/facebook-posts?page=${page}`,
+    {
+      headers: {
+        Accept: "application/json",
+      },
+      next: { revalidate: 60 },
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error(`Failed to load posts: ${res.status}`);
+  }
+
+  return res.json();
+}

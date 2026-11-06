@@ -58,18 +58,52 @@ if (!$this->isValidArticleUrl($url)) {
                         $wasCreated = DB::transaction(
                             function () use ($article, $title, $url, $sourceName) {
                                 // Load existing URL/title pairs for duplicate checks.
-$existing = NewsArticle::query()
-    ->get(['url', 'title', 'source_name']);
+$existing = NewsArticle::query()->get([
+    'id',
+    'url',
+    'title',
+    'source_name',
+    'title_si',
+    'summary_si',
+    'content_si',
+]);
 
 $candidateUrl = $this->normalizeUrl($url);
 $candidateTitle = $this->normalizeTitle($title);
 
 foreach ($existing as $saved) {
 
-    // Same URL means the article is already stored.
     $savedUrl = $this->normalizeUrl((string) $saved->url);
 
+    // Article already exists: update missing Sinhala fields.
     if ($savedUrl === $candidateUrl) {
+
+        $updates = [];
+
+        foreach ([
+            'title_si',
+            'summary_si',
+            'content_si',
+        ] as $field) {
+
+            if (
+                empty($saved->{$field}) &&
+                !empty($article[$field])
+            ) {
+                $updates[$field] = $article[$field];
+            }
+        }
+
+        if (!empty($updates)) {
+            $saved->update($updates);
+
+            Log::info('Updated existing article with Sinhala content', [
+                'article_id' => $saved->id,
+                'source' => $sourceName,
+                'fields' => array_keys($updates),
+            ]);
+        }
+
         return false;
     }
 
@@ -101,6 +135,9 @@ foreach ($existing as $saved) {
                                     'url' => $url,
                                     'summary' => $article['summary'] ?? null,
                                     'content' => $article['content'] ?? null,
+                                    'title_si' => $article['title_si'] ?? null,
+                                    'summary_si' => $article['summary_si'] ?? null,
+                                    'content_si' => $article['content_si'] ?? null,
                                     'image_url' => $article['image_url'] ?? null,
                                     'source_name' => $sourceName,
                                    'category' => $this->detectCategory(
@@ -325,13 +362,16 @@ private function fetchNewsApi(): array
 }
 
 
+
 private function fetchHelakuru(): array
 {
     $apiKey = config('services.rapidapi.key');
     $apiHost = config('services.rapidapi.host');
 
     if (!$apiKey || !$apiHost) {
-        throw new \RuntimeException('Helakuru RapidAPI credentials are missing.');
+        throw new \RuntimeException(
+            'Helakuru RapidAPI credentials are missing.'
+        );
     }
 
     $response = Http::acceptJson()
@@ -346,25 +386,19 @@ private function fetchHelakuru(): array
     $response->throw();
 
     $payload = $response->json();
-    $newsData = is_array($payload) ? ($payload['news_data'] ?? null) : null;
+    $newsData = $payload['news_data'] ?? null;
 
-    if (!is_array($newsData)) {
-        throw new \RuntimeException('Invalid Helakuru news_data response.');
-    }
-
-    if (($newsData['status']['success'] ?? false) !== true) {
-        throw new \RuntimeException('Helakuru API returned an unsuccessful response.');
+    if (!is_array($newsData) ||
+        ($newsData['status']['success'] ?? false) !== true) {
+        throw new \RuntimeException(
+            'Invalid or unsuccessful Helakuru response.'
+        );
     }
 
     $items = $newsData['data'] ?? [];
 
     if (!is_array($items)) {
         return [];
-    }
-
-    // Debug: shows which fields each article really has.
-    if (!empty($items[0]) && is_array($items[0])) {
-        $this->info('Helakuru item keys: ' . implode(', ', array_keys($items[0])));
     }
 
     $articles = [];
@@ -374,81 +408,99 @@ private function fetchHelakuru(): array
             continue;
         }
 
+        // Keep English and Sinhala separately.
         $titleEn = trim((string) ($item['titleEn'] ?? ''));
         $titleSi = trim((string) ($item['titleSi'] ?? ''));
 
-        $useEnglish = $titleEn !== '';
-        $title = $useEnglish ? $titleEn : $titleSi;
+        $contentEn = $this->extractHelakuruContent(
+            is_array($item['contentEn'] ?? null)
+                ? $item['contentEn']
+                : []
+        );
+
+        $contentSi = $this->extractHelakuruContent(
+            is_array($item['contentSi'] ?? null)
+                ? $item['contentSi']
+                : []
+        );
+
+        // Website: English first.
+        $title = $titleEn !== '' ? $titleEn : $titleSi;
+        $content = $contentEn !== '' ? $contentEn : $contentSi;
 
         if ($title === '') {
             continue;
         }
 
-        $contentEn = $this->extractHelakuruContent(
-            is_array($item['contentEn'] ?? null) ? $item['contentEn'] : []
-        );
-        $contentSi = $this->extractHelakuruContent(
-            is_array($item['contentSi'] ?? null) ? $item['contentSi'] : []
-        );
+        // Separate descriptions.
+        $englishParagraphs = preg_split(
+            '/\n+/',
+            trim($contentEn)
+        ) ?: [];
 
-        $content = $useEnglish ? $contentEn : $contentSi;
+        $sinhalaParagraphs = preg_split(
+            '/\n+/',
+            trim($contentSi)
+        ) ?: [];
 
-        if ($content === '') {
-            $content = $useEnglish ? $contentSi : $contentEn;
-        }
+        $summaryEn = trim($englishParagraphs[0] ?? '');
+        $summarySi = trim($sinhalaParagraphs[0] ?? '');
 
-        $paragraphs = preg_split('/\n+/', trim($content)) ?: [];
-        $summary = trim($paragraphs[0] ?? '');
-
-        // URL: try known fields, then fall back to one built from the id.
-        $url = null;
-
-        foreach (['share_url', 'shareUrl', 'url', 'link', 'web_url'] as $key) {
-            if (!empty($item[$key]) && is_string($item[$key])) {
-                $url = trim($item[$key]);
-                break;
-            }
-        }
+        // Use the official share URL.
+        $url = $item['share_url'] ?? null;
 
         if (!$url && !empty($item['id'])) {
-            // Unique per article, so duplicate checks work.
-            $url = 'https://www.helakuru.lk/esana/news/' . $item['id'];
+            $url = 'https://www.helakuru.lk/esana/p/'
+                . $item['id'] . '/';
         }
 
-        // Published date: try known fields, otherwise use now.
+        if (!$url) {
+            continue;
+        }
+
+        // Use the supplied article image.
+        $image = $item['thumb']
+            ?? $item['cover']
+            ?? null;
+
         $publishedAt = null;
 
-        foreach (['published', 'published_at', 'publishedAt', 'date', 'time', 'created_at'] as $key) {
-            if (!empty($item[$key])) {
-                try {
-                    $publishedAt = Carbon::parse($item[$key])->toDateTimeString();
-                    break;
-                } catch (\Throwable $e) {
-                    $publishedAt = null;
-                }
+        if (!empty($item['published'])) {
+            try {
+                $publishedAt = Carbon::parse(
+                    $item['published']
+                )->toDateTimeString();
+            } catch (\Throwable $e) {
+                $publishedAt = null;
             }
-        }
-
-        if (!$publishedAt) {
-            $publishedAt = now()->toDateTimeString();
         }
 
         $articles[] = [
+            // English website fields.
             'title' => $title,
+            'summary' => $summaryEn ?: $summarySi,
+            'content' => $content,
+
+            // Sinhala Facebook fields.
+            'title_si' => $titleSi ?: null,
+            'summary_si' => $summarySi ?: null,
+            'content_si' => $contentSi ?: null,
+
             'url' => $url,
-            'summary' => $summary ?: null,
-            'content' => $content ?: null,
-            'image_url' => $item['thumb'] ?? $item['cover'] ?? $item['image'] ?? null,
+            'image_url' => $image,
             'category' => 'General',
-            'language' => $useEnglish ? 'en' : 'si',
+            'language' => $titleEn !== '' ? 'en' : 'si',
             'published_at' => $publishedAt,
         ];
     }
 
-    $this->info('Helakuru Esana: received ' . count($articles) . ' articles.');
+    $this->info(
+        'Helakuru Esana: received ' . count($articles) . ' articles.'
+    );
 
     return $articles;
 }
+
 
 /**
  * Extract readable text from Helakuru content blocks.
