@@ -139,30 +139,72 @@ class PublishNewsToFacebook extends Command
         return $failed > 0 ? self::FAILURE : self::SUCCESS;
     }
 
-    private function buildCaption(NewsArticle $article): string
-    {
-        $title = trim(strip_tags((string) $article->title));
+private function buildCaption(NewsArticle $article): string
+{
+    $titleSi = $this->cleanText($article->title_si);
+    $titleEn = $this->cleanText($article->title);
 
-        $summary = html_entity_decode(
-            strip_tags((string) $article->summary),
-            ENT_QUOTES | ENT_HTML5,
+    $contentSi = $this->cleanText(
+        $article->summary_si ?: $article->content_si
+    );
+
+    $contentEn = $this->cleanText(
+        $article->summary ?: $article->content
+    );
+
+    // Fallback when one language is unavailable.
+    $titleSi = $titleSi ?: $titleEn;
+    $titleEn = $titleEn ?: $titleSi;
+
+    $contentSi = $contentSi ?: $contentEn;
+    $contentEn = $contentEn ?: $contentSi;
+
+    $caption = "📰 {$titleSi}";
+
+    if ($contentSi !== '') {
+        $caption .= "\n\n" . mb_strimwidth(
+            $contentSi,
+            0,
+            700,
+            '...',
             'UTF-8'
         );
-
-        $summary = preg_replace('/\s+/u', ' ', trim($summary)) ?? '';
-
-        $caption = "📰 {$title}";
-
-        if ($summary !== '') {
-            $caption .= "\n\n" . mb_strimwidth($summary, 0, 700, '...');
-        }
-
-        if ($article->source_name) {
-            $caption .= "\n\nSource: {$article->source_name}";
-        }
-
-        $caption .= "\n\nRead more: {$article->url}";
-
-        return $caption;
     }
+
+    $caption .= "\n\n━━━━━━━━━━━━━━\n\n";
+
+    $caption .= "🇬🇧 {$titleEn}";
+
+    if ($contentEn !== '') {
+        $caption .= "\n\n" . mb_strimwidth(
+            $contentEn,
+            0,
+            700,
+            '...',
+            'UTF-8'
+        );
+    }
+
+    if ($article->source_name) {
+        $caption .= "\n\nමූලාශ්‍රය / Source: {$article->source_name}";
+    }
+
+    $caption .= "\n\nසම්පූර්ණ පුවත / Read more: {$article->url}";
+
+    $caption .= "\n\n#LankaPulseAI #SriLankaNews #ශ්‍රීලංකාපුවත්";
+
+    return $caption;
+}
+
+private function cleanText(?string $value): string
+{
+    $text = html_entity_decode(
+        strip_tags((string) $value),
+        ENT_QUOTES | ENT_HTML5,
+        'UTF-8'
+    );
+
+    return preg_replace('/\s+/u', ' ', trim($text)) ?? '';
+}
+
 }
