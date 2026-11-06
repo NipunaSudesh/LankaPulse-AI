@@ -1,4 +1,6 @@
 <?php
+
+use App\Http\Controllers\Api\V1\FacebookPostController;
 use App\Http\Controllers\Api\V1\NewsController;
 use Illuminate\Support\Facades\Route;
 
@@ -16,4 +18,9 @@ Route::prefix('v1')->group(function () {
     NewsController::class,
     'testLankadeepa'
 ]);
+  Route::get('/test/helakuru', [NewsController::class, 'testHelakuru']);
+
+
+      Route::get('/facebook-posts', [FacebookPostController::class, 'index']);
+    Route::get('/facebook-posts/{id}', [FacebookPostController::class, 'show']);
 });

@@ -26,7 +26,9 @@ class FetchSriLankaNews extends Command
             'World News API' => fn () => $this->fetchWorldNews(),
             'Induwara.lk'    => fn () => $this->fetchInduwara(),
             'NewsAPI'        => fn () => $this->fetchNewsApi(),
-            'Lankadeepa'     => fn () => $this->fetchLankadeepa(),
+                'Helakuru Esana' => fn () => $this->fetchHelakuru(),
+
+            // 'Lankadeepa'     => fn () => $this->fetchLankadeepa(),
         ];
 
         foreach ($sources as $sourceName => $fetch) {
@@ -40,36 +42,81 @@ class FetchSriLankaNews extends Command
                 foreach ($articles as $article) {
                     $title = trim((string) ($article['title'] ?? ''));
                     $url = trim((string) ($article['url'] ?? ''));
+if ($title === '') {
+    $this->warn("EMPTY TITLE [{$sourceName}]");
+    $skipped++;
+    continue;
+}
 
-                    if (
-                        $title === '' ||
-                        !$this->isValidArticleUrl($url)
-                    ) {
-                        $skipped++;
-                        continue;
-                    }
+if (!$this->isValidArticleUrl($url)) {
+    $this->warn("INVALID URL [{$sourceName}]: {$url}");
+    $skipped++;
+    continue;
+}
 
                     try {
                         $wasCreated = DB::transaction(
                             function () use ($article, $title, $url, $sourceName) {
                                 // Load existing URL/title pairs for duplicate checks.
-                                $existing = NewsArticle::query()
-                                    ->get(['url', 'title']);
+$existing = NewsArticle::query()->get([
+    'id',
+    'url',
+    'title',
+    'source_name',
+    'title_si',
+    'summary_si',
+    'content_si',
+]);
 
-                                $candidateUrl = $this->normalizeUrl($url);
-                                $candidateTitle = $this->normalizeTitle($title);
+$candidateUrl = $this->normalizeUrl($url);
+$candidateTitle = $this->normalizeTitle($title);
 
-                                foreach ($existing as $saved) {
-                                    if (
-                                        $this->normalizeUrl((string) $saved->url)
-                                            === $candidateUrl
-                                        || $this->normalizeTitle(
-                                            (string) $saved->title
-                                        ) === $candidateTitle
-                                    ) {
-                                        return false;
-                                    }
-                                }
+foreach ($existing as $saved) {
+
+    $savedUrl = $this->normalizeUrl((string) $saved->url);
+
+    // Article already exists: update missing Sinhala fields.
+    if ($savedUrl === $candidateUrl) {
+
+        $updates = [];
+
+        foreach ([
+            'title_si',
+            'summary_si',
+            'content_si',
+        ] as $field) {
+
+            if (
+                empty($saved->{$field}) &&
+                !empty($article[$field])
+            ) {
+                $updates[$field] = $article[$field];
+            }
+        }
+
+        if (!empty($updates)) {
+            $saved->update($updates);
+
+            Log::info('Updated existing article with Sinhala content', [
+                'article_id' => $saved->id,
+                'source' => $sourceName,
+                'fields' => array_keys($updates),
+            ]);
+        }
+
+        return false;
+    }
+
+    // Only compare duplicate titles within the same source.
+    $savedTitle = $this->normalizeTitle((string) $saved->title);
+
+    if (
+        $saved->source_name === $sourceName &&
+        $savedTitle === $candidateTitle
+    ) {
+        return false;
+    }
+}
 
                                 $publishedAt = null;
 
@@ -88,6 +135,9 @@ class FetchSriLankaNews extends Command
                                     'url' => $url,
                                     'summary' => $article['summary'] ?? null,
                                     'content' => $article['content'] ?? null,
+                                    'title_si' => $article['title_si'] ?? null,
+                                    'summary_si' => $article['summary_si'] ?? null,
+                                    'content_si' => $article['content_si'] ?? null,
                                     'image_url' => $article['image_url'] ?? null,
                                     'source_name' => $sourceName,
                                    'category' => $this->detectCategory(
@@ -126,9 +176,7 @@ class FetchSriLankaNews extends Command
                     'message' => $e->getMessage(),
                 ]);
 
-                $this->error(
-                    "{$sourceName} failed. Check storage/logs/laravel.log."
-                );
+$this->error("{$sourceName} failed: " . $e->getMessage());
             }
         }
 
@@ -311,6 +359,186 @@ private function fetchNewsApi(): array
     $this->info('NewsAPI: received ' . count($allArticles) . ' articles.');
 
     return $allArticles;
+}
+
+
+
+private function fetchHelakuru(): array
+{
+    $apiKey = config('services.rapidapi.key');
+    $apiHost = config('services.rapidapi.host');
+
+    if (!$apiKey || !$apiHost) {
+        throw new \RuntimeException(
+            'Helakuru RapidAPI credentials are missing.'
+        );
+    }
+
+    $response = Http::acceptJson()
+        ->withHeaders([
+            'x-rapidapi-host' => $apiHost,
+            'x-rapidapi-key' => $apiKey,
+        ])
+        ->timeout(40)
+        ->retry(2, 1000)
+        ->get('https://helakuru-esana-news-api.p.rapidapi.com/');
+
+    $response->throw();
+
+    $payload = $response->json();
+    $newsData = $payload['news_data'] ?? null;
+
+    if (!is_array($newsData) ||
+        ($newsData['status']['success'] ?? false) !== true) {
+        throw new \RuntimeException(
+            'Invalid or unsuccessful Helakuru response.'
+        );
+    }
+
+    $items = $newsData['data'] ?? [];
+
+    if (!is_array($items)) {
+        return [];
+    }
+
+    $articles = [];
+
+    foreach ($items as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        // Keep English and Sinhala separately.
+        $titleEn = trim((string) ($item['titleEn'] ?? ''));
+        $titleSi = trim((string) ($item['titleSi'] ?? ''));
+
+        $contentEn = $this->extractHelakuruContent(
+            is_array($item['contentEn'] ?? null)
+                ? $item['contentEn']
+                : []
+        );
+
+        $contentSi = $this->extractHelakuruContent(
+            is_array($item['contentSi'] ?? null)
+                ? $item['contentSi']
+                : []
+        );
+
+        // Website: English first.
+        $title = $titleEn !== '' ? $titleEn : $titleSi;
+        $content = $contentEn !== '' ? $contentEn : $contentSi;
+
+        if ($title === '') {
+            continue;
+        }
+
+        // Separate descriptions.
+        $englishParagraphs = preg_split(
+            '/\n+/',
+            trim($contentEn)
+        ) ?: [];
+
+        $sinhalaParagraphs = preg_split(
+            '/\n+/',
+            trim($contentSi)
+        ) ?: [];
+
+        $summaryEn = trim($englishParagraphs[0] ?? '');
+        $summarySi = trim($sinhalaParagraphs[0] ?? '');
+
+        // Use the official share URL.
+        $url = $item['share_url'] ?? null;
+
+        if (!$url && !empty($item['id'])) {
+            $url = 'https://www.helakuru.lk/esana/p/'
+                . $item['id'] . '/';
+        }
+
+        if (!$url) {
+            continue;
+        }
+
+        // Use the supplied article image.
+        $image = $item['thumb']
+            ?? $item['cover']
+            ?? null;
+
+        $publishedAt = null;
+
+        if (!empty($item['published'])) {
+            try {
+                $publishedAt = Carbon::parse(
+                    $item['published']
+                )->toDateTimeString();
+            } catch (\Throwable $e) {
+                $publishedAt = null;
+            }
+        }
+
+        $articles[] = [
+            // English website fields.
+            'title' => $title,
+            'summary' => $summaryEn ?: $summarySi,
+            'content' => $content,
+
+            // Sinhala Facebook fields.
+            'title_si' => $titleSi ?: null,
+            'summary_si' => $summarySi ?: null,
+            'content_si' => $contentSi ?: null,
+
+            'url' => $url,
+            'image_url' => $image,
+            'category' => 'General',
+            'language' => $titleEn !== '' ? 'en' : 'si',
+            'published_at' => $publishedAt,
+        ];
+    }
+
+    $this->info(
+        'Helakuru Esana: received ' . count($articles) . ' articles.'
+    );
+
+    return $articles;
+}
+
+
+/**
+ * Extract readable text from Helakuru content blocks.
+ */
+private function extractHelakuruContent(array $blocks): string
+{
+    $paragraphs = [];
+
+    foreach ($blocks as $block) {
+        if (!is_array($block)) {
+            continue;
+        }
+
+        if (($block['type'] ?? '') !== 'text') {
+            continue;
+        }
+
+        $text = trim((string) ($block['data'] ?? ''));
+
+        if ($text === '') {
+            continue;
+        }
+
+        // Remove HTML tags such as <em>.
+        $text = html_entity_decode(
+            strip_tags($text),
+            ENT_QUOTES | ENT_HTML5,
+            'UTF-8'
+        );
+
+        $text = trim($text);
+
+        if ($text !== '') {
+            $paragraphs[] = $text;
+        }
+    }
+
+    return implode("\n\n", $paragraphs);
 }
 
 

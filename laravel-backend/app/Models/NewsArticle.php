@@ -12,6 +12,9 @@ class NewsArticle extends Model
         'content',
         'url',
         'image_url',
+        'title_si',
+'summary_si',
+'content_si',
         'source_name',
         'category',
         'language',
@@ -24,4 +27,8 @@ class NewsArticle extends Model
             'published_at' => 'datetime',
         ];
     }
+    public function facebookPost()
+{
+    return $this->hasOne(\App\Models\FacebookPost::class);
+}
 }
