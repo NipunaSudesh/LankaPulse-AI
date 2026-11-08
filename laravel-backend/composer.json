@@ -10,7 +10,8 @@
         "laravel/framework": "^12.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
-        "simplepie/simplepie": "^1.9"
+        "simplepie/simplepie": "^1.9",
+        "spatie/browsershot": "^5.5"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
