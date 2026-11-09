@@ -7,8 +7,7 @@ import { toBlob } from "html-to-image";
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
 
-const SITE_URL = "www.lankapulse.ai"; // change to your real domain
-
+const SITE_URL = "www.lankapulse.ai"; 
 /* ------------------------------------------------------------------ */
 /* Config                                                              */
 /* ------------------------------------------------------------------ */
@@ -24,7 +23,7 @@ const THEMES = {
   emerald: { label: "Emerald", from: "#00b894", to: "#013d33", chip: "#00ff9d" },
 };
 
-const DEFAULT_IMG = { zoom: 1.2, x: 0, y: 0 }; // zoom 1.2×, anchored top-left
+const DEFAULT_IMG = { zoom: 1, x: 50, y: 50 };
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 
@@ -50,6 +49,49 @@ function useFitScale(baseWidth) {
   return [boxRef, scale];
 }
 
+// Fetches the image via the proxy, crops 20% off the right and bottom,
+// and returns the cropped image as a data URL.
+const CROP = { right: 0.1, bottom: 0.2 };
+
+function useCroppedImage(src) {
+  const [cropped, setCropped] = useState(null);
+
+  useEffect(() => {
+    setCropped(null);
+    if (!src) return;
+
+    let cancelled = false;
+    const proxied = `/api/image-proxy?url=${encodeURIComponent(src)}`;
+    const image = new window.Image();
+    image.crossOrigin = "anonymous";
+
+    image.onload = () => {
+      if (cancelled) return;
+      try {
+        const cw = Math.round(image.naturalWidth * (1 - CROP.right));
+        const ch = Math.round(image.naturalHeight * (1 - CROP.bottom));
+
+        const canvas = document.createElement("canvas");
+        canvas.width = cw;
+        canvas.height = ch;
+        canvas.getContext("2d").drawImage(image, 0, 0, cw, ch, 0, 0, cw, ch);
+
+        setCropped(canvas.toDataURL("image/jpeg", 0.95));
+      } catch {
+        setCropped(proxied); // fallback: uncropped
+      }
+    };
+    image.onerror = () => !cancelled && setCropped(proxied);
+    image.src = proxied;
+
+    return () => {
+      cancelled = true;
+    };
+  }, [src]);
+
+  return cropped;
+}
+
 /* ------------------------------------------------------------------ */
 /* Graphics (rendered at full size, then scaled for preview)           */
 /* ------------------------------------------------------------------ */
@@ -58,10 +100,10 @@ function NewsPhoto({ src, img, style }) {
   if (!src) return null;
   return (
     <img
-      src={`/api/image-proxy?url=${encodeURIComponent(src)}`}
+      src={src}
       alt=""
       draggable={false}
-      className="absolute inset-0 h-full w-full select-none object-cover"
+className="absolute inset-0 h-full w-full select-none object-contain"
       style={{
         objectPosition: `${img.x}% ${img.y}%`,
         transform: `scale(${img.zoom})`,
@@ -356,6 +398,7 @@ export default function FacebookDashboard() {
   const [boxRef, scale] = useFitScale(tpl.w);
 
   const selectedArticle = articles.find((a) => String(a.id) === selectedId);
+  const croppedPhoto = useCroppedImage(selectedArticle?.image_url);
 
   useEffect(() => {
     setCurrentDate(new Date());
@@ -694,7 +737,7 @@ export default function FacebookDashboard() {
                 >
                   <Graphic
                     graphicRef={graphicRef}
-                    photo={selectedArticle?.image_url}
+                    photo={croppedPhoto}
                     img={img}
                     theme={theme}
                     titleSi={titleSi}
