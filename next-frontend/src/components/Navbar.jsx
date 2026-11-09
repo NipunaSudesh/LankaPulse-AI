@@ -228,7 +228,7 @@ export default function Navbar() {
 
               {/* Admin Shortcut */}
               <Link
-                href="/admin"
+                href="/admin/facebook"
                 aria-label="Admin dashboard"
                 title="Admin dashboard"
                 className="hidden h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface text-text-muted transition-all duration-300 hover:border-cyan-500/50 hover:bg-cyan-500/10 hover:text-cyan-600 dark:border-dark-border dark:bg-dark-surface dark:text-dark-text-muted dark:hover:text-cyan-300 sm:flex"
@@ -383,7 +383,7 @@ export default function Navbar() {
               })}
 
               <Link
-                href="/admin"
+                href="/admin/facebook"
                 onClick={() => setMenuOpen(false)}
                 className="flex items-center justify-between rounded-xl border border-border/70 px-4 py-3.5 transition hover:border-cyan-500/30 hover:bg-surface dark:border-dark-border/70 dark:hover:bg-dark-surface sm:col-span-2"
               >
