@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -7,13 +8,14 @@ import NewsCard from "@/components/ui/NewsCard";
 import Button from "@/components/ui/Button";
 
 const ITEMS_PER_PAGE = 12;
-const HOURS_LIMIT = 36;
+const HOURS_LIMIT = 24;
 
 export default function LatestNewsPage() {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [filteredArticles, setFilteredArticles] = useState([]);
 
   // Fetch news from API
   useEffect(() => {
@@ -43,35 +45,45 @@ export default function LatestNewsPage() {
   }, []);
 
   // Filter articles published within the last 36 hours
-  const now = Date.now();
+  useEffect(() => {
+    const now = Date.now();
 
-  const filteredArticles = articles.filter((article) => {
-    if (!article.published_at) return false;
+    const filtered = articles.filter((article) => {
+      if (!article.published_at) return false;
 
-    const publishedTime = new Date(article.published_at).getTime();
+      const publishedTime = new Date(
+        article.published_at
+      ).getTime();
 
-    if (Number.isNaN(publishedTime)) return false;
+      if (Number.isNaN(publishedTime)) return false;
 
-    const difference = now - publishedTime;
-    const hoursDifference = difference / (1000 * 60 * 60);
+      const difference = now - publishedTime;
+      const hoursDifference =
+        difference / (1000 * 60 * 60);
 
-    return hoursDifference >= 0 && hoursDifference <= HOURS_LIMIT;
-  });
+      return (
+        hoursDifference >= 0 &&
+        hoursDifference <= HOURS_LIMIT
+      );
+    });
 
-  // Sort articles by latest publication date
-  const sortedArticles = [...filteredArticles].sort((a, b) => {
-    return (
-      new Date(b.published_at).getTime() -
-      new Date(a.published_at).getTime()
+    // Sort latest articles first
+    filtered.sort(
+      (a, b) =>
+        new Date(b.published_at).getTime() -
+        new Date(a.published_at).getTime()
     );
-  });
+
+    setFilteredArticles(filtered);
+    setCurrentPage(1);
+  }, [articles]);
 
   // Pagination calculations
   const totalPages = Math.ceil(
-    sortedArticles.length / ITEMS_PER_PAGE
+    filteredArticles.length / ITEMS_PER_PAGE
   );
 
-  const currentArticles = sortedArticles.slice(
+  const currentArticles = filteredArticles.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
@@ -103,7 +115,7 @@ export default function LatestNewsPage() {
       {/* News Articles */}
       {!loading && !error && (
         <>
-          {sortedArticles.length > 0 ? (
+          {filteredArticles.length > 0 ? (
             <>
               {/* Pagination Information */}
               <div className="mb-6 flex items-center justify-end gap-4">
@@ -116,12 +128,13 @@ export default function LatestNewsPage() {
                   {" - "}
                   {Math.min(
                     currentPage * ITEMS_PER_PAGE,
-                    sortedArticles.length
+                    filteredArticles.length
                   )}
                   {" of "}
-                  {sortedArticles.length} articles
+                  {filteredArticles.length} articles
+
                   <span className="ml-2 text-text-secondary">
-                    (Last 36 hours)
+                    (Last 24 hours)
                   </span>
                 </p>
 
