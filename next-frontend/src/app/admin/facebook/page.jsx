@@ -619,28 +619,32 @@ export default function FacebookDashboard() {
         <section className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           {/* ---------------- Editor ---------------- */}
           <div className="space-y-5">
-            <Field label="Select News Article">
-              <select
-                value={selectedId}
-                onChange={(e) => setSelectedId(e.target.value)}
-                className={fieldClass}
-              >
-                <option value="">Choose an article</option>
-                {articles.map((article) => (
-                  <option
-                    key={article.id}
-                    value={article.id}
-                    disabled={
-                      Boolean(article.facebook_post_id) ||
-                      article.facebook_publish_status === "publishing"
-                    }
-                  >
-                    #{article.id} - {article.title}
-                    {article.facebook_post_id ? " (Published)" : ""}
-                  </option>
-                ))}
-              </select>
-            </Field>
+<Field label="Select News Article">
+  <select
+    value={selectedId}
+    onChange={(e) => setSelectedId(e.target.value)}
+    className={fieldClass}
+  >
+    <option value="">Choose an article</option>
+
+    {articles.map((article, index) => (
+      <option
+        key={article.id}
+        value={article.id}
+        disabled={
+          Boolean(article.facebook_post_id) ||
+          article.facebook_publish_status === "publishing"
+        }
+      >
+    {`Article ${index + 1} | #${article.id} - ${article.title} | ${
+      article.published_at
+        ? article.published_at.replace("T", " ").replace(/Z$/, "").slice(0, 16)
+        : "Date unavailable"
+    }${article.facebook_post_id ? " (Published)" : ""}`}
+      </option>
+    ))}
+  </select>
+</Field>
 
             <Field label="Sinhala Headline" right={<span className="text-xs text-slate-500">{titleSi.length} chars</span>}>
               <textarea value={titleSi} onChange={(e) => setTitleSi(e.target.value)} rows={3} className={fieldClass} />
