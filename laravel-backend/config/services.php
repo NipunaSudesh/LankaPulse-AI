@@ -66,11 +66,16 @@ return [
     'graph_version' => env('FACEBOOK_GRAPH_VERSION', 'v26.0'),
     'page_id' => env('FACEBOOK_PAGE_ID'),
     'page_access_token' => env('FACEBOOK_PAGE_ACCESS_TOKEN'),
+
     'auto_publish' => env('FACEBOOK_AUTO_PUBLISH', false),
     'daily_limit' => (int) env('FACEBOOK_DAILY_LIMIT', 20),
     'max_article_age_hours' => (int) env('FACEBOOK_MAX_ARTICLE_AGE_HOURS', 48),
-],
 
+    'publish_api_key' => env('FACEBOOK_PUBLISH_API_KEY'),
+
+    'graphic_width' => 1200,
+    'graphic_height' => 630,
+],
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),
