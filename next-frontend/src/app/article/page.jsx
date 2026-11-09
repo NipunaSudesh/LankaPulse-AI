@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -13,7 +13,7 @@ import {
   FiZap,
 } from "react-icons/fi";
 
-export default function ArticlePage() {
+function ArticleContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
@@ -238,5 +238,20 @@ The full story, key developments, and important details behind the headline.
         </div>
       </article>
     </main>
+  );
+}
+export default function ArticlePage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
+          <p className="text-slate-600 dark:text-slate-300">
+            Loading article...
+          </p>
+        </main>
+      }
+    >
+      <ArticleContent />
+    </Suspense>
   );
 }
