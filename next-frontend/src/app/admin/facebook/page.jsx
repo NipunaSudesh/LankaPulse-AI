@@ -51,7 +51,7 @@ function useFitScale(baseWidth) {
 
 // Fetches the image via the proxy, crops 20% off the right and bottom,
 // and returns the cropped image as a data URL.
-const CROP = { right: 0.1, bottom: 0.2 };
+const CROP = { right: 0, bottom: 0 };
 
 function useCroppedImage(src) {
   const [cropped, setCropped] = useState(null);
@@ -151,8 +151,19 @@ function AlertGraphic({ graphicRef, photo, img, theme, titleSi, titleEn, date, o
           className="absolute inset-0"
           style={{ background: `linear-gradient(160deg, #0b1d3a, ${theme.to})` }}
         />
-        <NewsPhoto src={photo} img={img} />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-transparent" />
+<NewsPhoto src={photo} img={img} />
+
+{/* Logo and brand name – bottom-right on photo */}
+{opts.showLogo && (
+  <div className="absolute bottom-[150px] right-4  flex items-center gap-3 rounded-xl border border-white/25 bg-black px-4 py-3 shadow-2xl">
+    <Logo size={52} />
+    <span className="whitespace-nowrap text-[25px] font-black tracking-tight text-white">
+      LankaPulse <span className="text-cyan-300">AI</span>
+    </span>
+  </div>
+)}
+
+<div className="absolute inset-0 z-10 bg-gradient-to-b from-black/35 via-transparent to-transparent pointer-events-none" />
       </div>
 
       {/* Header */}
@@ -164,7 +175,7 @@ function AlertGraphic({ graphicRef, photo, img, theme, titleSi, titleEn, date, o
           boxShadow: "0 12px 40px rgba(0,0,0,0.45)",
         }}
       >
-        {opts.showLogo && <Logo size={84} />}
+        {/* {opts.showLogo && <Logo size={84} />} */}
         <div className="flex items-baseline gap-5 italic">
           <span className="text-[78px] font-black tracking-tight">LANKAPULSE</span>
           <span
@@ -218,7 +229,7 @@ function AlertGraphic({ graphicRef, photo, img, theme, titleSi, titleEn, date, o
           )}
         </div>
 
-        <div className="flex items-center justify-between border-t border-white/25 px-[56px] py-[18px] text-[24px]">
+        {/* <div className="flex items-center justify-between border-t border-white/25 px-[56px] py-[18px] text-[24px]">
           <span className="text-white/80">{SITE_URL}</span>
           <span
             className="rounded-md px-4 py-1 font-bold tracking-[3px]"
@@ -226,7 +237,7 @@ function AlertGraphic({ graphicRef, photo, img, theme, titleSi, titleEn, date, o
           >
             LANKAPULSE AI
           </span>
-        </div>
+        </div> */}
       </div>
     </div>
   );
@@ -239,9 +250,22 @@ function WideGraphic({ graphicRef, photo, img, theme, titleSi, titleEn, date, op
       className="relative overflow-hidden bg-[#081326] font-sans"
       style={{ width: 1200, height: 630 }}
     >
-      <div className="absolute inset-0 overflow-hidden" style={{ clipPath: "inset(0 0 20% 0)" }}>
-        <NewsPhoto src={photo} img={img} style={{ opacity: 0.45 }} />
-      </div>
+<div
+  className="absolute inset-0 overflow-hidden"
+  style={{ clipPath: "inset(0 0 20% 0)" }}
+>
+  <NewsPhoto src={photo} img={img} style={{ opacity: 0.45 }} />
+</div>
+
+{/* Logo and brand name – bottom-right on photo */}
+{opts.showLogo && (
+  <div className="absolute right-8 bottom-[145px] z-20 flex items-center gap-3 rounded-xl border border-white/25 bg-black/70 px-4 py-3 shadow-2xl">
+    <Logo size={46} />
+    <span className="whitespace-nowrap text-[23px] font-black tracking-tight text-white">
+      LankaPulse <span className="text-cyan-300">AI</span>
+    </span>
+  </div>
+)}
 
       <div className="absolute inset-0 bg-gradient-to-r from-[#040d1d]/[0.98] via-[#040d1d]/[0.82] to-[#040d1d]/30" />
 
@@ -387,10 +411,10 @@ export default function FacebookDashboard() {
   const [themeKey, setThemeKey] = useState("alert");
   const [img, setImg] = useState(DEFAULT_IMG);
   const [opts, setOpts] = useState({
-    sinhalaSize: 45,
+    sinhalaSize: 50,
     showEn: true,
     showDate: true,
-    showLogo: false,
+    showLogo: true,
   });
 
   const tpl = TEMPLATES[templateKey];
@@ -814,7 +838,7 @@ export default function FacebookDashboard() {
               <div className="flex flex-wrap items-center gap-2">
                 <Toggle label="English headline" checked={opts.showEn} onChange={setOpt("showEn")} />
                 <Toggle label="Date badge" checked={opts.showDate} onChange={setOpt("showDate")} />
-                <Toggle label="Logo" checked={opts.showLogo} onChange={setOpt("showLogo")} />
+                {/* <Toggle label="Logo" checked={opts.showLogo} onChange={setOpt("showLogo")} /> */}
                 <button
                   type="button"
                   onClick={() => setImg(DEFAULT_IMG)}

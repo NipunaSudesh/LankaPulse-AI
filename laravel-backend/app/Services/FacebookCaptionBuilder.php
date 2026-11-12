@@ -36,7 +36,7 @@ class FacebookCaptionBuilder
 
         $caption .= "\n\n━━━━━━━━━━━━━━━━━━\n\n";
 
-        $caption .= "🇬🇧 {$titleEn}";
+        $caption .= "📰 {$titleEn}";
 
         if ($summaryEn !== '') {
             $caption .= "\n\n" . mb_strimwidth(
@@ -48,15 +48,15 @@ class FacebookCaptionBuilder
             );
         }
 
-        if ($article->source_name) {
-            $caption .= "\n\nමූලාශ්‍රය / Source: "
-                . $article->source_name;
-        }
+        // if ($article->source_name) {
+        //     $caption .= "\n\nමූලාශ්‍රය / Source: "
+        //         . $article->source_name;
+        // }
 
-        $caption .= "\n\nසම්පූර්ණ පුවත / Read more: "
-            . $article->url;
+        // $caption .= "\n\nසම්පූර්ණ පුවත / Read more: "
+        //     . $article->url;
 
-        $caption .= "\n\n#LankaPulseAI #SriLankaNews #ශ්‍රීලංකාව";
+        $caption .= "\n\n#LankaPulseAI #SriLankaNews #ශ්‍රීලංකාව#SriLankaNews #SriLanka #BreakingNews #LatestNews #NewsUpdate #LocalNews #WorldNews #SriLankanNews #NewsToday #CurrentAffairs #StayInformed #NewsIntelligence #DailyNews #SriLankaUpdates #TrustedNews #TrendingNews #SinhalaNews #EnglishNews #LankaNews";
 
         return $caption;
     }

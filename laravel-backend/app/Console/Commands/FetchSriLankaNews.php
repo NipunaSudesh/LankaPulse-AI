@@ -24,8 +24,8 @@ class FetchSriLankaNews extends Command
 
         $sources = [
             'World News API' => fn () => $this->fetchWorldNews(),
-            'Induwara.lk'    => fn () => $this->fetchInduwara(),
-            'NewsAPI'        => fn () => $this->fetchNewsApi(),
+            // 'Induwara.lk'    => fn () => $this->fetchInduwara(),
+            // 'NewsAPI'        => fn () => $this->fetchNewsApi(),
                 'Helakuru Esana' => fn () => $this->fetchHelakuru(),
 
             // 'Lankadeepa'     => fn () => $this->fetchLankadeepa(),
