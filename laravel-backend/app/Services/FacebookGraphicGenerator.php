@@ -12,8 +12,14 @@ class FacebookGraphicGenerator
     {
         $directory = storage_path('app/facebook-graphics');
 
-        if (!is_dir($directory)) {
-            mkdir($directory, 0755, true);
+        if (
+            !is_dir($directory) &&
+            !mkdir($directory, 0755, true) &&
+            !is_dir($directory)
+        ) {
+            throw new RuntimeException(
+                'Unable to create Facebook graphics directory.'
+            );
         }
 
         $path = $directory . '/article-' . $article->id . '-' . uniqid() . '.png';
@@ -22,10 +28,10 @@ class FacebookGraphicGenerator
 
         try {
             $browser = Browsershot::html($html)
-                ->windowSize(1200, 630)
-                ->setScreenshotType('png');
+                ->windowSize(1080, 1350)
+                ->setScreenshotType('png')
+                ->waitUntilNetworkIdle();
 
-            // Use the backend's installed Puppeteer package.
             $browser->setNodeModulePath(base_path('node_modules'));
 
             $browser->save($path);
@@ -37,7 +43,9 @@ class FacebookGraphicGenerator
         }
 
         if (!file_exists($path) || filesize($path) === 0) {
-            throw new RuntimeException('Generated Facebook graphic is empty.');
+            throw new RuntimeException(
+                'Generated Facebook graphic is empty.'
+            );
         }
 
         return $path;
@@ -49,43 +57,67 @@ class FacebookGraphicGenerator
             $article->title_si ?: $article->title
         );
 
-        $titleEn = $this->escape($article->title);
-
-        $summarySi = $this->escape(
-            $article->summary_si ?: $article->summary
+        $titleEn = $this->escape(
+            $article->title ?: $article->title_si
         );
 
-        $summaryEn = $this->escape(
-            $article->summary ?: $article->content
-        );
+        $imageUrl = trim((string) $article->image_url);
 
-        $imageUrl = $this->escape($article->image_url ?? '');
-
-        $source = $this->escape(
-            $article->source_name ?? 'LankaPulse AI'
-        );
+        if (
+            $imageUrl !== '' &&
+            !filter_var($imageUrl, FILTER_VALIDATE_URL)
+        ) {
+            $imageUrl = '';
+        }
 
         $imageStyle = $imageUrl !== ''
-            ? "background-image: url('{$imageUrl}');"
+            ? "background-image: url('" . $this->escape($imageUrl) . "');"
             : '';
+
+        $date = $article->published_at
+            ? $article->published_at->format('Y-m-d')
+            : now()->format('Y-m-d');
+
+        $date = $this->escape($date);
+
+        // Load logo from Laravel public directory.
+        $logoPath = public_path('LP_logo.png');
+
+        $logoHtml = '';
+
+        if (file_exists($logoPath)) {
+            $logoBase64 = base64_encode(
+                file_get_contents($logoPath)
+            );
+
+            $logoHtml = '
+                <div class="logo-box">
+                    <img
+                        src="data:image/png;base64,' . $logoBase64 . '"
+                        alt="LankaPulse AI"
+                    >
+                </div>
+            ';
+        }
 
         return <<<HTML
 <!DOCTYPE html>
 <html lang="si">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=1200, initial-scale=1">
+<meta name="viewport" content="width=1080, initial-scale=1">
 
 <style>
 * {
     box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
     margin: 0;
     padding: 0;
-    width: 1200px;
-    height: 630px;
+    width: 1080px;
+    height: 1350px;
     overflow: hidden;
 }
 
@@ -94,155 +126,308 @@ body {
         "Noto Sans Sinhala",
         "Iskoola Pota",
         "Nirmala UI",
-        Arial,
         sans-serif;
+
     background: #081326;
     color: white;
 }
 
-.container {
-    width: 1200px;
-    height: 630px;
+.poster {
     position: relative;
+    width: 1080px;
+    height: 1350px;
     overflow: hidden;
-    background: linear-gradient(115deg, #071426, #142e52);
+    background: #081326;
+}
+
+/* HEADER */
+
+.header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1080px;
+    height: 170px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+
+    background: linear-gradient(
+        90deg,
+        #6b0812,
+        #e11d2e 50%,
+        #6b0812
+    );
+
+    box-shadow: 0 12px 40px rgba(0,0,0,.45);
+    z-index: 5;
+}
+
+.brand,
+.alert {
+    font-size: 78px;
+    font-weight: 900;
+    font-style: italic;
+    letter-spacing: -2px;
+    white-space: nowrap;
+}
+
+.alert {
+    color: #facc15;
+}
+
+/* NEWS IMAGE */
+
+.photo-area {
+    position: absolute;
+    top: 170px;
+    left: 0;
+    width: 1080px;
+    height: 840px;
+    overflow: hidden;
+
+    background: linear-gradient(
+        160deg,
+        #0b1d3a,
+        #6b0812
+    );
 }
 
 .photo {
     position: absolute;
     inset: 0;
-    background-size: cover;
+
+    background-repeat: no-repeat;
     background-position: center;
-    opacity: 0.48;
+    background-size: contain;
+
+    z-index: 1;
 }
 
-.overlay {
+.photo-overlay {
     position: absolute;
     inset: 0;
+
     background: linear-gradient(
-        90deg,
-        rgba(4, 13, 29, 0.98) 0%,
-        rgba(4, 13, 29, 0.90) 45%,
-        rgba(4, 13, 29, 0.25) 100%
+        to bottom,
+        rgba(0,0,0,.35),
+        transparent 40%,
+        transparent
     );
-}
 
-.content {
-    position: relative;
     z-index: 2;
-    padding: 55px 65px;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
 }
 
-.brand {
-    font-size: 27px;
+/* LOGO AND BRAND NAME ON PHOTO */
+
+.photo-brand {
+    position: absolute;
+    right: 16px;
+    bottom: 150px;
+
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    padding: 12px 16px;
+
+    /* Solid black background */
+    background: #000000;
+
+    border: 1px solid rgba(255,255,255,.25);
+    border-radius: 12px;
+
+    box-shadow: 0 10px 30px rgba(0,0,0,.4);
+
+    z-index: 3;
+}
+
+.logo-box {
+    position: relative;
+    width: 68px;
+    height: 68px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 4px;
+
+    background: #0f172a;
+    border: 1px solid rgba(34,211,238,.3);
+    border-radius: 12px;
+
+    box-shadow: 0 0 15px rgba(34,211,238,.2);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.logo-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.brand-name {
+    font-size: 25px;
     font-weight: 900;
-    letter-spacing: 1px;
+    letter-spacing: -0.5px;
+    white-space: nowrap;
     color: #ffffff;
 }
 
-.brand span {
-    color: #38bdf8;
+.brand-name span {
+    color: #67e8f9;
 }
 
-.tagline {
-    font-size: 13px;
-    color: #b8c9dc;
-    margin-top: 4px;
-    letter-spacing: 2px;
-}
+/* DATE BADGE */
 
-.category {
-    display: inline-block;
-    background: #0ea5e9;
+.date {
+    position: absolute;
+    top: 200px;
+    left: 40px;
+
+    z-index: 6;
+
+    padding: 8px 24px;
+    border-radius: 8px;
+
+    background: rgba(0,0,0,.75);
+
     color: white;
-    font-size: 14px;
-    font-weight: bold;
-    padding: 8px 16px;
-    border-radius: 5px;
-    margin-top: 40px;
-    width: fit-content;
+    font-size: 34px;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+/* HEADLINE PANEL */
+
+.headline-panel {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+
+    width: 1080px;
+    height: 440px;
+
+    display: flex;
+    flex-direction: column;
+
+    background: linear-gradient(
+        to bottom,
+        transparent 0,
+        #e11d2e 95px,
+        #6b0812 100%
+    );
+
+    z-index: 4;
+}
+
+.headline-content {
+    flex: 1;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+    padding: 20px 56px 0;
+    text-align: center;
 }
 
 .title-si {
-    font-size: 36px;
+    max-height: 230px;
+    overflow: hidden;
+
+    font-size: 50px;
     font-weight: 800;
-    line-height: 1.45;
-    margin-top: 22px;
-    max-width: 1000px;
+    line-height: 1.35;
+
     color: #ffffff;
+
+    text-shadow: 0 3px 14px rgba(0,0,0,.35);
+    overflow-wrap: anywhere;
 }
 
 .title-en {
-    font-size: 21px;
-    color: #cbd5e1;
-    margin-top: 15px;
-    max-width: 950px;
-    line-height: 1.4;
-}
+    max-height: 82px;
+    overflow: hidden;
 
-.footer {
-    margin-top: auto;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-top: 1px solid rgba(255,255,255,.25);
-    padding-top: 17px;
-    color: #dbeafe;
-    font-size: 15px;
-}
+    margin: 16px auto 0;
+    max-width: 900px;
 
-.url {
-    color: #38bdf8;
-    font-weight: bold;
+    color: rgba(255,255,255,.85);
+
+    font-size: 30px;
+    line-height: 1.35;
+
+    overflow-wrap: anywhere;
 }
 </style>
 </head>
 
 <body>
-<div class="container">
 
-    <div class="photo" style="{$imageStyle}"></div>
-    <div class="overlay"></div>
+<div class="poster">
 
-    <div class="content">
+    <!-- NEWS IMAGE -->
+    <div class="photo-area">
 
-        <div>
-            <div class="brand">
-                LANKA<span>PULSE</span> AI
+        <div
+            class="photo"
+            style="{$imageStyle}"
+        ></div>
+
+        <div class="photo-overlay"></div>
+
+        <!-- LANKAPULSE AI BRANDING ON IMAGE -->
+        <div class="photo-brand">
+
+            {$logoHtml}
+
+            <div class="brand-name">
+                LankaPulse <span>AI</span>
             </div>
 
-            <div class="tagline">
-                SRI LANKA NEWS INTELLIGENCE
-            </div>
-        </div>
-
-        <div class="category">
-            BREAKING NEWS
-        </div>
-
-        <div class="title-si">
-            {$titleSi}
-        </div>
-
-        <div class="title-en">
-            {$titleEn}
-        </div>
-
-        <div class="footer">
-            <div>
-                {$source}
-            </div>
-
-            <div class="url">
-                LANKAPULSE AI
-            </div>
         </div>
 
     </div>
+
+    <!-- HEADER -->
+    <div class="header">
+
+        <span class="brand">LANKAPULSE</span>
+
+        <span class="alert">ALERT</span>
+
+    </div>
+
+    <!-- DATE -->
+    <div class="date">
+        {$date}
+    </div>
+
+    <!-- HEADLINE -->
+    <div class="headline-panel">
+
+        <div class="headline-content">
+
+            <div class="title-si">
+                {$titleSi}
+            </div>
+
+            <div class="title-en">
+                {$titleEn}
+            </div>
+
+        </div>
+
+    </div>
+
 </div>
+
 </body>
 </html>
 HTML;

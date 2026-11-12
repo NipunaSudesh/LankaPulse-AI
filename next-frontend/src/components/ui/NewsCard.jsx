@@ -90,11 +90,12 @@ export default function NewsCard({ article }) {
   const categoryName = category || "General";
 
   // Publisher
-  const publisher =
-    source_name &&
-    source_name.toLowerCase() !== "lk"
-      ? source_name
-      : "Sri Lankan News";
+  const publisher = "LANKAPULSE AI";
+  // const publisher =
+  //   source_name &&
+  //   source_name.toLowerCase() !== "lk"
+  //     ? source_name
+  //     : "Sri Lankan News";
 
   // Published date
   const formattedDate = published_at
