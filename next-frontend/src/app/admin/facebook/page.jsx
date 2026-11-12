@@ -387,7 +387,7 @@ export default function FacebookDashboard() {
   const [themeKey, setThemeKey] = useState("alert");
   const [img, setImg] = useState(DEFAULT_IMG);
   const [opts, setOpts] = useState({
-    sinhalaSize: 57,
+    sinhalaSize: 45,
     showEn: true,
     showDate: true,
     showLogo: false,
