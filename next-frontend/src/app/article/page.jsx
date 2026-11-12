@@ -73,6 +73,8 @@ function ArticleContent() {
       })
     : "Recently published";
 
+  const publisher2 ="Sri Lankan News";
+
   const publisher =
     article.source_name?.toLowerCase() === "lk" || !article.source_name
       ? "Sri Lankan News"
@@ -104,7 +106,7 @@ function ArticleContent() {
           <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-3 text-sm text-slate-500 dark:text-slate-400">
             <span className="flex items-center gap-2">
               <FiGlobe className="text-cyan-600" size={16} />
-              {publisher}
+              {publisher2}
             </span>
 
             <span className="flex items-center gap-2">
@@ -125,11 +127,36 @@ function ArticleContent() {
           {article.category || "General"}
         </span>
 
-        <span className="absolute bottom-2 left-2  z-10 inline-flex items-center gap-1 rounded-md bg-black/40 px-2 py-1.5 text-[9px] font-semibold text-white backdrop-blur-md sm:bottom-3 sm:left-3 sm:text-[10px]">
+        {/* <span className="absolute bottom-2 left-2  z-10 inline-flex items-center gap-1 rounded-md bg-black/40 px-2 py-1.5 text-[9px] font-semibold text-white backdrop-blur-md sm:bottom-3 sm:left-3 sm:text-[10px]">
           <FiZap className="text-cyan-300" size={12} />
-          LankaPulse AI
-        </span>
-        
+          LankaPulse AI 
+        </span> */}
+
+<div
+  className="
+    absolute z-30 flex items-center
+    text-[clamp(12px,calc(4.31px+1.538vw),20px)]
+    bottom-[0.5em] right-[0.01em] sm:bottom-[1.5em] sm:right-[0.4em] lg:bottom-[1.3em] lg:right-[0.6em] lg:py-[0.6em]
+    gap-[0.4em] px-[0.6em] py-[0.5em] md:px-[0.8em]
+    rounded-[0.7em]
+    border border-white/25 bg-black shadow-2xl
+    max-w-[calc(100%-1rem)]
+  "
+>
+  <Image
+    src="/LP_logo.png"
+    alt="LankaPulse AI"
+    width={60}
+    height={50}
+    priority
+    unoptimized
+    className="h-[3em] w-auto shrink-0 rounded-lg object-contain"
+  />
+
+  <span className="whitespace-nowrap font-black leading-none tracking-tight text-white">
+    LankaPulse <span className="text-cyan-300">AI</span>
+  </span>
+</div>
 
               <Image
                 src={

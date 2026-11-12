@@ -155,9 +155,9 @@ function AlertGraphic({ graphicRef, photo, img, theme, titleSi, titleEn, date, o
 
 {/* Logo and brand name – bottom-right on photo */}
 {opts.showLogo && (
-  <div className="absolute bottom-[140px] right-4  flex z-30 items-center gap-3 rounded-xl border border-white/25 bg-black px-6 py-6 shadow-2xl">
+  <div className="absolute bottom-[120px] right-4  flex z-30 items-center gap-3 rounded-xl border border-white/25 bg-black px-6 py-6 shadow-2xl">
     <Logo size={52} />
-    <span className="whitespace-nowrap text-[30px] font-black tracking-tight text-white">
+    <span className="whitespace-nowrap text-[25px] font-black tracking-tight text-white">
       LankaPulse <span className="text-cyan-300">AI</span>
     </span>
   </div>
@@ -205,7 +205,7 @@ function AlertGraphic({ graphicRef, photo, img, theme, titleSi, titleEn, date, o
           background: `linear-gradient(to bottom, transparent 0, ${theme.from} 95px, ${theme.to} 100%)`,
         }}
       >
-        <div className="flex flex-1 flex-col justify-center px-[56px] pt-[20px] text-center">
+        <div className="flex flex-1 flex-col mt-30 px-4  text-center">
           <div
             className="overflow-hidden font-extrabold"
             style={{
