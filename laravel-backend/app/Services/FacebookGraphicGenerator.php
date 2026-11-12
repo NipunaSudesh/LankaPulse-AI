@@ -272,7 +272,7 @@ body {
 }
 
 .brand-name {
-    font-size: 25px;
+    font-size: 30px;
     font-weight: 900;
     letter-spacing: -0.5px;
     white-space: nowrap;
