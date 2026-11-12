@@ -327,7 +327,7 @@ body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    margin-top: 120px;
+    margin-top: 60px;
     padding: 0 16px;
     text-align: center;
 }
