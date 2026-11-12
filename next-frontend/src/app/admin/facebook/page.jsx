@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { toBlob } from "html-to-image";
+import { FiMoon, FiSun } from "react-icons/fi";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
 
-const SITE_URL = "www.lankapulse.ai"; 
 /* ------------------------------------------------------------------ */
 /* Config                                                              */
 /* ------------------------------------------------------------------ */
@@ -49,8 +49,33 @@ function useFitScale(baseWidth) {
   return [boxRef, scale];
 }
 
-// Fetches the image via the proxy, crops 20% off the right and bottom,
-// and returns the cropped image as a data URL.
+// Light / dark mode: toggles the `dark` class on <html> and remembers it.
+function useTheme() {
+  const [mode, setMode] = useState(null);
+
+  useEffect(() => {
+    let saved = null;
+    try {
+      saved = localStorage.getItem("theme");
+    } catch {}
+    setMode(
+      saved ||
+        (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+    );
+  }, []);
+
+  useEffect(() => {
+    if (!mode) return;
+    document.documentElement.classList.toggle("dark", mode === "dark");
+    try {
+      localStorage.setItem("theme", mode);
+    } catch {}
+  }, [mode]);
+
+  return [mode, () => setMode((m) => (m === "dark" ? "light" : "dark"))];
+}
+
+// Fetches the image via the proxy and returns it as a data URL.
 const CROP = { right: 0, bottom: 0 };
 
 function useCroppedImage(src) {
@@ -78,7 +103,7 @@ function useCroppedImage(src) {
 
         setCropped(canvas.toDataURL("image/jpeg", 0.95));
       } catch {
-        setCropped(proxied); // fallback: uncropped
+        setCropped(proxied);
       }
     };
     image.onerror = () => !cancelled && setCropped(proxied);
@@ -93,7 +118,8 @@ function useCroppedImage(src) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Graphics (rendered at full size, then scaled for preview)           */
+/* Graphics                                                            */
+/* These are exported as PNG, so they use FIXED colours (no dark:).    */
 /* ------------------------------------------------------------------ */
 
 function NewsPhoto({ src, img, style }) {
@@ -103,7 +129,7 @@ function NewsPhoto({ src, img, style }) {
       src={src}
       alt=""
       draggable={false}
-className="absolute inset-0 h-full w-full select-none object-contain"
+      className="absolute inset-0 h-full w-full select-none object-contain"
       style={{
         objectPosition: `${img.x}% ${img.y}%`,
         transform: `scale(${img.zoom})`,
@@ -151,19 +177,19 @@ function AlertGraphic({ graphicRef, photo, img, theme, titleSi, titleEn, date, o
           className="absolute inset-0"
           style={{ background: `linear-gradient(160deg, #0b1d3a, ${theme.to})` }}
         />
-<NewsPhoto src={photo} img={img} />
+        <NewsPhoto src={photo} img={img} />
 
-{/* Logo and brand name – bottom-right on photo */}
-{opts.showLogo && (
-  <div className="absolute bottom-[150px] right-4  flex items-center gap-3 rounded-xl border border-white/25 bg-black px-4 py-3 shadow-2xl">
-    <Logo size={52} />
-    <span className="whitespace-nowrap text-[25px] font-black tracking-tight text-white">
-      LankaPulse <span className="text-cyan-300">AI</span>
-    </span>
-  </div>
-)}
+        {/* Logo and brand name, bottom-right on photo */}
+        {opts.showLogo && (
+          <div className="absolute bottom-[120px] right-4 z-30 flex items-center gap-3 rounded-xl border border-white/25 bg-black px-6 py-6 shadow-2xl">
+            <Logo size={52} />
+            <span className="whitespace-nowrap text-[25px] font-black tracking-tight text-white">
+              LankaPulse <span className="text-cyan-300">AI</span>
+            </span>
+          </div>
+        )}
 
-<div className="absolute inset-0 z-10 bg-gradient-to-b from-black/35 via-transparent to-transparent pointer-events-none" />
+        <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-b from-black/35 via-transparent to-transparent" />
       </div>
 
       {/* Header */}
@@ -175,7 +201,6 @@ function AlertGraphic({ graphicRef, photo, img, theme, titleSi, titleEn, date, o
           boxShadow: "0 12px 40px rgba(0,0,0,0.45)",
         }}
       >
-        {/* {opts.showLogo && <Logo size={84} />} */}
         <div className="flex items-baseline gap-5 italic">
           <span className="text-[78px] font-black tracking-tight">LANKAPULSE</span>
           <span
@@ -205,7 +230,7 @@ function AlertGraphic({ graphicRef, photo, img, theme, titleSi, titleEn, date, o
           background: `linear-gradient(to bottom, transparent 0, ${theme.from} 95px, ${theme.to} 100%)`,
         }}
       >
-        <div className="flex flex-1 flex-col justify-center px-[56px] pt-[20px] text-center">
+        <div className="mt-[60px] flex flex-1 flex-col px-4 text-center">
           <div
             className="overflow-hidden font-extrabold"
             style={{
@@ -228,16 +253,6 @@ function AlertGraphic({ graphicRef, photo, img, theme, titleSi, titleEn, date, o
             </div>
           )}
         </div>
-
-        {/* <div className="flex items-center justify-between border-t border-white/25 px-[56px] py-[18px] text-[24px]">
-          <span className="text-white/80">{SITE_URL}</span>
-          <span
-            className="rounded-md px-4 py-1 font-bold tracking-[3px]"
-            style={{ background: "rgba(0,0,0,0.35)", color: theme.chip }}
-          >
-            LANKAPULSE AI
-          </span>
-        </div> */}
       </div>
     </div>
   );
@@ -250,22 +265,18 @@ function WideGraphic({ graphicRef, photo, img, theme, titleSi, titleEn, date, op
       className="relative overflow-hidden bg-[#081326] font-sans"
       style={{ width: 1200, height: 630 }}
     >
-<div
-  className="absolute inset-0 overflow-hidden"
-  style={{ clipPath: "inset(0 0 20% 0)" }}
->
-  <NewsPhoto src={photo} img={img} style={{ opacity: 0.45 }} />
-</div>
+      <div className="absolute inset-0 overflow-hidden" style={{ clipPath: "inset(0 0 20% 0)" }}>
+        <NewsPhoto src={photo} img={img} style={{ opacity: 0.45 }} />
+      </div>
 
-{/* Logo and brand name – bottom-right on photo */}
-{opts.showLogo && (
-  <div className="absolute right-8 bottom-[145px] z-20 flex items-center gap-3 rounded-xl border border-white/25 bg-black/70 px-4 py-3 shadow-2xl">
-    <Logo size={46} />
-    <span className="whitespace-nowrap text-[23px] font-black tracking-tight text-white">
-      LankaPulse <span className="text-cyan-300">AI</span>
-    </span>
-  </div>
-)}
+      {opts.showLogo && (
+        <div className="absolute bottom-[145px] right-8 z-20 flex items-center gap-3 rounded-xl border border-white/25 bg-black/70 px-4 py-3 shadow-2xl">
+          <Logo size={46} />
+          <span className="whitespace-nowrap text-[23px] font-black tracking-tight text-white">
+            LankaPulse <span className="text-cyan-300">AI</span>
+          </span>
+        </div>
+      )}
 
       <div className="absolute inset-0 bg-gradient-to-r from-[#040d1d]/[0.98] via-[#040d1d]/[0.82] to-[#040d1d]/30" />
 
@@ -326,17 +337,17 @@ function WideGraphic({ graphicRef, photo, img, theme, titleSi, titleEn, date, op
 }
 
 /* ------------------------------------------------------------------ */
-/* Small UI pieces                                                     */
+/* Small UI pieces (light + dark)                                      */
 /* ------------------------------------------------------------------ */
 
 const fieldClass =
-  "w-full rounded-lg border border-dark-border bg-dark-surface p-3 text-sm outline-none transition focus:border-light-cyan/60 focus:ring-2 focus:ring-light-cyan/20";
+  "w-full rounded-lg border border-slate-300 bg-white p-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-cyan-600 focus:ring-2 focus:ring-cyan-600/20 dark:border-dark-border dark:bg-dark-surface dark:text-white dark:focus:border-light-cyan/60 dark:focus:ring-light-cyan/20";
 
 function Field({ label, children, right }) {
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <label className="text-sm text-slate-300">{label}</label>
+        <label className="text-sm text-slate-700 dark:text-slate-300">{label}</label>
         {right}
       </div>
       {children}
@@ -347,7 +358,7 @@ function Field({ label, children, right }) {
 function Slider({ label, value, min, max, step = 1, onChange, suffix = "" }) {
   return (
     <label className="block">
-      <div className="mb-1 flex justify-between text-xs text-slate-400">
+      <div className="mb-1 flex justify-between text-xs text-slate-600 dark:text-slate-400">
         <span>{label}</span>
         <span>
           {value}
@@ -361,7 +372,7 @@ function Slider({ label, value, min, max, step = 1, onChange, suffix = "" }) {
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full accent-[#00ffff]"
+        className="w-full accent-cyan-600 dark:accent-[#00ffff]"
       />
     </label>
   );
@@ -374,15 +385,20 @@ function Toggle({ label, checked, onChange }) {
       onClick={() => onChange(!checked)}
       className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition ${
         checked
-          ? "border-light-cyan/60 bg-light-cyan/10 text-light-cyan"
-          : "border-dark-border text-slate-400 hover:text-slate-200"
+          ? "border-cyan-600/60 bg-cyan-600/10 text-cyan-700 dark:border-light-cyan/60 dark:bg-light-cyan/10 dark:text-light-cyan"
+          : "border-slate-300 text-slate-500 hover:text-slate-900 dark:border-dark-border dark:text-slate-400 dark:hover:text-slate-200"
       }`}
     >
-      <span className={`h-2 w-2 rounded-full ${checked ? "bg-light-cyan" : "bg-slate-600"}`} />
+      <span
+        className={`h-2 w-2 rounded-full ${
+          checked ? "bg-cyan-600 dark:bg-light-cyan" : "bg-slate-400 dark:bg-slate-600"
+        }`}
+      />
       {label}
     </button>
   );
 }
+
 
 /* ------------------------------------------------------------------ */
 /* Page                                                                */
@@ -391,6 +407,8 @@ function Toggle({ label, checked, onChange }) {
 export default function FacebookDashboard() {
   const graphicRef = useRef(null);
   const dragRef = useRef(null);
+
+  const [mode, toggleMode] = useTheme();
 
   const [articles, setArticles] = useState([]);
   const [posts, setPosts] = useState([]);
@@ -627,54 +645,62 @@ export default function FacebookDashboard() {
   const Graphic = templateKey === "alert" ? AlertGraphic : WideGraphic;
 
   return (
-    <main className="min-h-screen bg-dark-background px-4 py-8 text-white">
+    <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900 transition-colors dark:bg-slate-950 dark:text-white">
       <div className="mx-auto max-w-7xl space-y-8">
         {/* Header */}
-        <header>
-          <span className="brand-gradient whitespace-nowrap text-xl font-extrabold tracking-tight">
-            LankaPulse AI
-          </span>
-          <h1 className="mt-2 text-3xl font-bold">Facebook Publishing Dashboard</h1>
-          <p className="mt-2 text-slate-400">
-            Design bilingual branded news graphics, tweak them live, and publish to Facebook.
-          </p>
+        <header className="flex items-start justify-between gap-4">
+          <div>
+            <span className="brand-gradient whitespace-nowrap text-xl font-extrabold tracking-tight">
+              LankaPulse AI
+            </span>
+            <h1 className="mt-2 text-3xl font-bold">Facebook Publishing Dashboard</h1>
+            <p className="mt-2 text-slate-600 dark:text-slate-400">
+              Design bilingual branded news graphics, tweak them live, and publish to Facebook.
+            </p>
+          </div>
         </header>
 
         <section className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           {/* ---------------- Editor ---------------- */}
           <div className="space-y-5">
-<Field label="Select News Article">
-  <select
-    value={selectedId}
-    onChange={(e) => setSelectedId(e.target.value)}
-    className={fieldClass}
-  >
-    <option value="">Choose an article</option>
+            <Field label="Select News Article">
+              <select
+                value={selectedId}
+                onChange={(e) => setSelectedId(e.target.value)}
+                className={fieldClass}
+              >
+                <option value="">Choose an article</option>
 
-    {articles.map((article, index) => (
-      <option
-        key={article.id}
-        value={article.id}
-        disabled={
-          Boolean(article.facebook_post_id) ||
-          article.facebook_publish_status === "publishing"
-        }
-      >
-    {`Article ${index + 1} | #${article.id} - ${article.title} | ${
-      article.published_at
-        ? article.published_at.replace("T", " ").replace(/Z$/, "").slice(0, 16)
-        : "Date unavailable"
-    }${article.facebook_post_id ? " (Published)" : ""}`}
-      </option>
-    ))}
-  </select>
-</Field>
+                {articles.map((article, index) => (
+                  <option
+                    key={article.id}
+                    value={article.id}
+                    disabled={
+                      Boolean(article.facebook_post_id) ||
+                      article.facebook_publish_status === "publishing"
+                    }
+                  >
+                    {`Article ${index + 1} | #${article.id} - ${article.title} | ${
+                      article.published_at
+                        ? article.published_at.replace("T", " ").replace(/Z$/, "").slice(0, 16)
+                        : "Date unavailable"
+                    }${article.facebook_post_id ? " (Published)" : ""}`}
+                  </option>
+                ))}
+              </select>
+            </Field>
 
-            <Field label="Sinhala Headline" right={<span className="text-xs text-slate-500">{titleSi.length} chars</span>}>
+            <Field
+              label="Sinhala Headline"
+              right={<span className="text-xs text-slate-500">{titleSi.length} chars</span>}
+            >
               <textarea value={titleSi} onChange={(e) => setTitleSi(e.target.value)} rows={3} className={fieldClass} />
             </Field>
 
-            <Field label="English Headline" right={<span className="text-xs text-slate-500">{titleEn.length} chars</span>}>
+            <Field
+              label="English Headline"
+              right={<span className="text-xs text-slate-500">{titleEn.length} chars</span>}
+            >
               <textarea value={titleEn} onChange={(e) => setTitleEn(e.target.value)} rows={2} className={fieldClass} />
             </Field>
 
@@ -692,7 +718,7 @@ export default function FacebookDashboard() {
                 <button
                   type="button"
                   onClick={copyCaption}
-                  className="text-xs text-light-cyan hover:underline"
+                  className="text-xs text-cyan-700 hover:underline dark:text-light-cyan"
                 >
                   Copy
                 </button>
@@ -705,7 +731,7 @@ export default function FacebookDashboard() {
               <button
                 onClick={downloadGraphic}
                 disabled={loading || !selectedArticle}
-                className="rounded-lg bg-slate-700 px-5 py-3 transition hover:bg-slate-600 disabled:opacity-50"
+                className="rounded-lg bg-slate-200 px-5 py-3 text-slate-800 transition hover:bg-slate-300 disabled:opacity-50 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600"
               >
                 Download PNG
               </button>
@@ -713,13 +739,15 @@ export default function FacebookDashboard() {
               <button
                 onClick={publishPost}
                 disabled={loading || !selectedArticle || Boolean(selectedArticle?.facebook_post_id)}
-                className="rounded-lg bg-blue-600 px-5 py-3 font-bold transition hover:bg-blue-500 disabled:opacity-50"
+                className="rounded-lg bg-blue-600 px-5 py-3 font-bold text-white transition hover:bg-blue-500 disabled:opacity-50"
               >
                 {loading ? "Processing..." : "Publish to Facebook"}
               </button>
             </div>
 
-            {message && <p className="break-words text-sm text-sky-300">{message}</p>}
+            {message && (
+              <p className="break-words text-sm text-sky-700 dark:text-sky-300">{message}</p>
+            )}
           </div>
 
           {/* ---------------- Studio ---------------- */}
@@ -732,7 +760,7 @@ export default function FacebookDashboard() {
             </div>
 
             {/* Template tabs */}
-            <div className="grid grid-cols-2 gap-2 rounded-xl border border-dark-border bg-dark-surface p-1">
+            <div className="grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-white p-1 dark:border-dark-border dark:bg-dark-surface">
               {Object.entries(TEMPLATES).map(([key, t]) => (
                 <button
                   key={key}
@@ -740,7 +768,7 @@ export default function FacebookDashboard() {
                   className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
                     templateKey === key
                       ? "bg-gradient-to-r from-primary to-light-blue text-white shadow"
-                      : "text-slate-400 hover:text-white"
+                      : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                   }`}
                 >
                   {t.label}
@@ -752,7 +780,7 @@ export default function FacebookDashboard() {
             <div className={`mx-auto w-full ${templateKey === "alert" ? "max-w-[460px]" : ""}`}>
               <div
                 ref={boxRef}
-                className="relative w-full overflow-hidden rounded-2xl border border-dark-border shadow-2xl shadow-black/50"
+                className="relative w-full overflow-hidden rounded-2xl border border-slate-200 shadow-2xl shadow-black/20 dark:border-dark-border dark:shadow-black/50"
                 style={{ height: tpl.h * scale }}
               >
                 <div
@@ -791,9 +819,11 @@ export default function FacebookDashboard() {
             </div>
 
             {/* Controls */}
-            <div className="space-y-4 rounded-xl border border-dark-border bg-dark-card/60 p-4">
+            <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-dark-border dark:bg-dark-card/60">
               <div>
-                <p className="mb-2 text-xs uppercase tracking-widest text-slate-400">Theme</p>
+                <p className="mb-2 text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                  Theme
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(THEMES).map(([key, t]) => (
                     <button
@@ -801,8 +831,8 @@ export default function FacebookDashboard() {
                       onClick={() => setThemeKey(key)}
                       className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition ${
                         themeKey === key
-                          ? "border-white/70 text-white"
-                          : "border-dark-border text-slate-400 hover:text-white"
+                          ? "border-slate-900 text-slate-900 dark:border-white/70 dark:text-white"
+                          : "border-slate-300 text-slate-500 hover:text-slate-900 dark:border-dark-border dark:text-slate-400 dark:hover:text-white"
                       }`}
                     >
                       <span
@@ -838,11 +868,10 @@ export default function FacebookDashboard() {
               <div className="flex flex-wrap items-center gap-2">
                 <Toggle label="English headline" checked={opts.showEn} onChange={setOpt("showEn")} />
                 <Toggle label="Date badge" checked={opts.showDate} onChange={setOpt("showDate")} />
-                {/* <Toggle label="Logo" checked={opts.showLogo} onChange={setOpt("showLogo")} /> */}
                 <button
                   type="button"
                   onClick={() => setImg(DEFAULT_IMG)}
-                  className="ml-auto text-xs text-slate-400 hover:text-white"
+                  className="ml-auto text-xs text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                 >
                   Reset photo
                 </button>
@@ -856,24 +885,24 @@ export default function FacebookDashboard() {
           <h2 className="text-2xl font-bold">Published Facebook Posts</h2>
 
           {posts.length === 0 ? (
-            <p className="text-slate-400">No published Facebook posts found.</p>
+            <p className="text-slate-600 dark:text-slate-400">No published Facebook posts found.</p>
           ) : (
             <div className="space-y-3">
               {posts.map((post) => (
                 <div
                   key={post.id}
-                  className="rounded-lg border border-dark-border bg-dark-surface p-4 transition hover:border-light-cyan/40"
+                  className="rounded-lg border border-slate-200 bg-white p-4 transition hover:border-cyan-600/50 dark:border-dark-border dark:bg-dark-surface dark:hover:border-light-cyan/40"
                 >
                   <div className="flex flex-wrap justify-between gap-3">
                     <div>
                       <p className="font-semibold">{post.news_article?.title || "News article"}</p>
-                      <p className="mt-1 text-sm text-slate-400">
+                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                         {post.published_at
                           ? new Date(post.published_at).toLocaleString()
                           : "Publication date unavailable"}
                       </p>
                     </div>
-                    <span className="text-sm text-green-400">{post.status}</span>
+                    <span className="text-sm text-green-600 dark:text-green-400">{post.status}</span>
                   </div>
 
                   {post.post_url && (
@@ -881,7 +910,7 @@ export default function FacebookDashboard() {
                       href={post.post_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mt-3 inline-block text-sm text-sky-400 hover:text-sky-300"
+                      className="mt-3 inline-block text-sm text-sky-600 hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300"
                     >
                       View Facebook post
                     </a>
