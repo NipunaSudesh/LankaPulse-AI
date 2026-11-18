@@ -56,15 +56,18 @@ class PublishNewsToFacebook extends Command
             (int) config('services.facebook.max_article_age_hours', 48)
         );
 
-        $articles = NewsArticle::query()
-            ->where('facebook_publish_status', 'pending')
-            ->whereNull('facebook_post_id')
-            ->whereNotNull('image_url')
-            ->whereNotNull('url')
-            ->where('created_at', '>=', now()->subHours($maxAge))
-            ->orderByDesc('created_at')
-            ->limit($limit)
-            ->get();
+$articles = NewsArticle::query()
+    ->where('facebook_publish_status', 'pending')
+    ->whereNull('facebook_post_id')
+    ->whereNotNull('image_url')
+    ->whereNotNull('url')
+    ->whereNotNull('published_at')
+    ->where('published_at', '>=', now()->subHours($maxAge))
+    ->where('published_at', '<=', now())
+    ->orderByDesc('published_at')
+    ->orderByDesc('id')
+    ->limit($limit)
+    ->get();
 
         if ($articles->isEmpty()) {
             $this->info('No eligible articles found.');
