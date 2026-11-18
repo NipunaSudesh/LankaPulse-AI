@@ -385,21 +385,28 @@ private function fetchHelakuru(): array
 
     $response->throw();
 
-    $payload = $response->json();
-    $newsData = $payload['news_data'] ?? null;
+$payload = $response->json();
 
-    if (!is_array($newsData) ||
-        ($newsData['status']['success'] ?? false) !== true) {
-        throw new \RuntimeException(
-            'Invalid or unsuccessful Helakuru response.'
-        );
-    }
+if (!is_array($payload)) {
+    throw new \RuntimeException(
+        'Invalid Helakuru JSON response.'
+    );
+}
 
-    $items = $newsData['data'] ?? [];
 
-    if (!is_array($items)) {
-        return [];
-    }
+$items = $payload['data']
+    ?? $payload['news_data']['data']
+    ?? null;
+
+if (!is_array($items)) {
+    Log::error('Invalid Helakuru article structure', [
+        'top_level_keys' => array_keys($payload),
+    ]);
+
+    throw new \RuntimeException(
+        'Helakuru response does not contain a valid article array.'
+    );
+}
 
     $articles = [];
 
