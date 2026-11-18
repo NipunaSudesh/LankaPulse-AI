@@ -85,6 +85,13 @@ class FacebookGraphicGenerator
         ];
     }
 
+    private function getSinhalaHeadlineSize(?string $titleSi): int
+{
+    $length = mb_strlen(trim($titleSi ?? ''), 'UTF-8');
+
+    return $length > 100 ? 45 : 52;
+}
+
     private function buildHtml(NewsArticle $article, array $o): string
     {
         $titleSi = $this->escape($article->title_si ?: $article->title);
@@ -99,8 +106,11 @@ class FacebookGraphicGenerator
         $to = $o['theme']['to'];
         $chip = $o['theme']['chip'];
 
-        $sinhalaSize = $o['sinhalaSize'];
-        $titleSiMax = $o['showEn'] ? 230 : 290;
+  $sinhalaSize = $this->getSinhalaHeadlineSize(
+    $article->title_si ?: $article->title
+);
+
+$titleSiMax = $o['showEn'] ? 230 : 290;
 
         $latinFont = self::LATIN_FONT;
         $sinhalaFont = self::SINHALA_FONT;

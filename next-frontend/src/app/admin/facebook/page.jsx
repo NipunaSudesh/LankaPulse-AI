@@ -75,6 +75,12 @@ function useTheme() {
   return [mode, () => setMode((m) => (m === "dark" ? "light" : "dark"))];
 }
 
+function getSinhalaHeadlineSize(titleSi) {
+  const length = Array.from(titleSi || "").length;
+
+  return length > 100 ? 45 : 52;
+}
+
 // Fetches the image via the proxy and returns it as a data URL.
 const CROP = { right: 0, bottom: 0 };
 
@@ -181,7 +187,7 @@ function AlertGraphic({ graphicRef, photo, img, theme, titleSi, titleEn, date, o
 
         {/* Logo and brand name, bottom-right on photo */}
         {opts.showLogo && (
-          <div className="absolute bottom-[155px] right-4 z-30 flex items-center gap-3 rounded-xl border border-white/25 bg-black px-6 py-4 shadow-2xl">
+          <div className="absolute bottom-[150px] right-4 z-30 flex items-center gap-3 rounded-xl border border-white/25 bg-black px-6 py-4 shadow-2xl">
             <Logo size={52} />
             <span className="whitespace-nowrap text-[25px] font-black tracking-tight text-white">
               LankaPulse aa<span className="text-cyan-300">AI</span>
@@ -230,13 +236,13 @@ function AlertGraphic({ graphicRef, photo, img, theme, titleSi, titleEn, date, o
           background: `linear-gradient(to bottom, transparent 0, ${theme.from} 95px, ${theme.to} 100%)`,
         }}
       >
-        <div className="mt-[30px] flex flex-1 flex-col px-4 text-center">
+        <div className="mt-[40px] flex flex-1 flex-col px-4 text-center">
           <div
             className="overflow-hidden font-extrabold"
             style={{
               ...sinhalaFont,
-              fontSize: opts.sinhalaSize,
-              lineHeight: 1.25,
+              fontSize: getSinhalaHeadlineSize(titleSi),
+              lineHeight: 1.35,
               maxHeight: opts.showEn ? 310 : 320,
               textShadow: "0 3px 14px rgba(0,0,0,0.35)",
             }}
@@ -308,7 +314,7 @@ function WideGraphic({ graphicRef, photo, img, theme, titleSi, titleEn, date, op
 
         <div
           className="mt-10 overflow-hidden font-extrabold leading-[1.4]"
-          style={{ ...sinhalaFont, fontSize: Math.round(opts.sinhalaSize * 0.62), maxHeight: 155 }}
+          style={{ ...sinhalaFont,fontSize: Math.round(getSinhalaHeadlineSize(titleSi) * 0.62), fontSize: Math.round(opts.sinhalaSize * 0.62), maxHeight: 155 }}
         >
           {titleSi || "සිංහල පුවත් සිරස්තලය"}
         </div>
