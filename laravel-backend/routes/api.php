@@ -23,4 +23,6 @@ Route::prefix('v1')->group(function () {
         FacebookPostController::class,
         'publish',
     ])->middleware('throttle:5,1');
+
+    
 });

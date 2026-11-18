@@ -238,12 +238,12 @@ body {
 .photo-brand {
     position: absolute;
     right: 16px;
-    bottom: 120px;
+    bottom: 150px;
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 24px;
-    background: #000000;
+    padding: 16px 20px;
+    background: #000000FC;
     border: 1px solid rgba(255,255,255,.25);
     border-radius: 12px;
     box-shadow: 0 25px 50px -12px rgba(0,0,0,.25);
@@ -327,7 +327,7 @@ body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    margin-top: 60px;
+    margin-top: 30px;
     padding: 0 16px;
     text-align: center;
 }
