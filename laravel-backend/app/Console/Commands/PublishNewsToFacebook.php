@@ -53,17 +53,21 @@ class PublishNewsToFacebook extends Command
 
         $maxAge = max(
             1,
-            (int) config('services.facebook.max_article_age_hours', 48)
+            (int) config('services.facebook.max_article_age_hours', 24)
         );
-
 $articles = NewsArticle::query()
-    ->where('facebook_publish_status', 'pending')
     ->whereNull('facebook_post_id')
+    ->where(function ($query) {
+        $query->where('facebook_publish_status', 'pending')
+              ->orWhereNull('facebook_publish_status');
+    })
     ->whereNotNull('image_url')
+    ->where('image_url', '!=', '')
     ->whereNotNull('url')
+    ->where('url', '!=', '')
     ->whereNotNull('published_at')
-    ->where('published_at', '>=', now()->subHours($maxAge))
     ->where('published_at', '<=', now())
+    ->whereDate('published_at', today())
     ->orderByDesc('published_at')
     ->orderByDesc('id')
     ->limit($limit)
@@ -89,14 +93,17 @@ $articles = NewsArticle::query()
         $failed = 0;
 
         foreach ($articles as $article) {
-            $claimed = NewsArticle::query()
-                ->whereKey($article->id)
-                ->where('facebook_publish_status', 'pending')
-                ->whereNull('facebook_post_id')
-                ->update([
-                    'facebook_publish_status' => 'publishing',
-                    'facebook_error' => null,
-                ]);
+$claimed = NewsArticle::query()
+    ->whereKey($article->id)
+    ->whereNull('facebook_post_id')
+    ->where(function ($query) {
+        $query->where('facebook_publish_status', 'pending')
+              ->orWhereNull('facebook_publish_status');
+    })
+    ->update([
+        'facebook_publish_status' => 'publishing',
+        'facebook_error' => null,
+    ]);
 
             if (!$claimed) {
                 continue;

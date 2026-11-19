@@ -2,31 +2,46 @@
 
 namespace App\Services;
 
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
 class FacebookPagePublisher
 {
+    private function graphUrl(string $pageId): string
+    {
+        $version = config('services.facebook.graph_version');
+
+        return "https://graph.facebook.com/{$version}/{$pageId}/photos";
+    }
+
     public function publishPhotoPost(
         string $imageUrl,
         string $caption
     ): string {
         $this->validateCredentials();
 
-        $version = config('services.facebook.graph_version');
         $pageId = config('services.facebook.page_id');
         $token = config('services.facebook.page_access_token');
 
         $response = Http::asForm()
-            ->timeout(60)
-            ->post(
-                "https://graph.facebook.com/{$version}/{$pageId}/photos",
-                [
-                    'url' => $imageUrl,
-                    'caption' => $caption,
-                    'access_token' => $token,
-                ]
-            );
+            ->connectTimeout(30)
+            ->timeout(120)
+            ->retry(
+                2,
+                1000,
+                function ($exception) {
+                    // Retry only connection-level failures.
+                    // Do not blindly retry an uncertain upload.
+                    return $exception instanceof \Illuminate\Http\Client\ConnectionException;
+                },
+                throw: false
+            )
+            ->post($this->graphUrl($pageId), [
+                'url' => $imageUrl,
+                'caption' => $caption,
+                'access_token' => $token,
+            ]);
 
         return $this->extractPostId($response);
     }
@@ -37,27 +52,38 @@ class FacebookPagePublisher
     ): string {
         $this->validateCredentials();
 
-        if (!file_exists($imagePath)) {
-            throw new RuntimeException('Facebook image file does not exist.');
+        if (!file_exists($imagePath) || !is_readable($imagePath)) {
+            throw new RuntimeException(
+                'Facebook image file does not exist or is not readable.'
+            );
         }
 
-        $version = config('services.facebook.graph_version');
         $pageId = config('services.facebook.page_id');
         $token = config('services.facebook.page_access_token');
 
-        $response = Http::timeout(90)
-            ->attach(
-                'source',
-                file_get_contents($imagePath),
-                basename($imagePath)
-            )
-            ->post(
-                "https://graph.facebook.com/{$version}/{$pageId}/photos",
-                [
+        $image = fopen($imagePath, 'rb');
+
+        if ($image === false) {
+            throw new RuntimeException(
+                'Unable to open Facebook image file.'
+            );
+        }
+
+        try {
+            $response = Http::connectTimeout(30)
+                ->timeout(180)
+                ->attach(
+                    'source',
+                    $image,
+                    basename($imagePath)
+                )
+                ->post($this->graphUrl($pageId), [
                     'caption' => $caption,
                     'access_token' => $token,
-                ]
-            );
+                ]);
+        } finally {
+            fclose($image);
+        }
 
         return $this->extractPostId($response);
     }
@@ -72,9 +98,15 @@ class FacebookPagePublisher
                 'Facebook Page ID or Page Access Token is missing.'
             );
         }
+
+        if (!config('services.facebook.graph_version')) {
+            throw new RuntimeException(
+                'Facebook Graph API version is missing.'
+            );
+        }
     }
 
-    private function extractPostId($response): string
+    private function extractPostId(Response $response): string
     {
         if ($response->failed()) {
             throw new RuntimeException(
