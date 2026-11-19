@@ -7,7 +7,7 @@ export default function Logo({ size = 52 }) {
 
       <div className="relative overflow-hidden rounded-xl border border-cyan-400/20 bg-slate-900 p-1 shadow-lg">
         <Image
-          src="/LP_logo.png"
+         src="/LP_Logo.png"
           alt="LankaPulse AI"
           width={size}
           height={size}

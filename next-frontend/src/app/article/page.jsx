@@ -144,7 +144,7 @@ function ArticleContent() {
   "
 >
   <Image
-    src="/LP_logo.png"
+    src="/LP_Logo.png"
     alt="LankaPulse AI"
     width={60}
     height={50}

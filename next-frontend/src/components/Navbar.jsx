@@ -110,7 +110,7 @@ export default function Navbar() {
 
                 <div className="relative overflow-hidden rounded-xl border border-primary/15 bg-surface p-1 shadow-sm transition duration-300 group-hover:-translate-y-0.5 group-hover:border-cyan-400/60 dark:border-light-cyan dark:bg-dark-surface">
                   <Image
-                    src="/LP_logo.png"
+                    src="/LP_Logo.png"
                     alt="LankaPulse AI"
                     width={44}
                     height={44}
