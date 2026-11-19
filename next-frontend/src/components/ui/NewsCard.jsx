@@ -10,7 +10,7 @@ import {
   FiZap,
 } from "react-icons/fi";
 
-const FALLBACK_IMAGE = "/LP_logo.png";
+const FALLBACK_IMAGE = "/LP_Logo.png";
 
 export default function NewsCard({ article }) {
   const [imageError, setImageError] = useState(false);

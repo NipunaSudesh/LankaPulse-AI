@@ -86,7 +86,7 @@ export default function Footer() {
             >
               <span className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-primary/15  transition-all duration-300 group-hover:border-accent/50 group-hover:shadow-lg group-hover:shadow-accent/10">
                 <Image
-                  src="/LP_logo.png"
+                  src="/LP_Logo.png"
                   alt="LankaPulse AI"
                   width={42}
                   height={42}
