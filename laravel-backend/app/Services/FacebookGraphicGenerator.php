@@ -89,7 +89,7 @@ class FacebookGraphicGenerator
 {
     $length = mb_strlen(trim($titleSi ?? ''), 'UTF-8');
 
-    return $length > 100 ? 45 : 52;
+    return $length > 100 ? 45 : 55;
 }
 
     private function buildHtml(NewsArticle $article, array $o): string
