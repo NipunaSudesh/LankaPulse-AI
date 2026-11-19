@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class NewsArticle extends Model
 {
     protected $fillable = [
-        // Existing news fields
         'title',
         'summary',
         'content',
@@ -22,7 +21,7 @@ class NewsArticle extends Model
         'language',
         'published_at',
 
-        // AI intelligence fields
+        // AI ranking fields
         'ai_score',
         'ai_priority',
         'ai_category',
@@ -46,7 +45,6 @@ class NewsArticle extends Model
         return [
             'published_at' => 'datetime',
             'ai_analyzed_at' => 'datetime',
-
             'ai_analysis' => 'array',
 
             'ai_score' => 'integer',

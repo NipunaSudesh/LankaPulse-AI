@@ -13,9 +13,10 @@ use Throwable;
 
 class PublishNewsToFacebook extends Command
 {
-    protected $signature = 'news:publish-facebook
-                            {--limit= : Maximum posts to publish}
-                            {--dry-run : Preview without publishing}';
+protected $signature = 'news:publish-facebook
+                        {--limit= : Maximum posts to publish}
+                        {--min-score=70 : Minimum AI ranking score}
+                        {--dry-run : Preview without publishing}';
 
     protected $description = 'Publish branded news graphics to Facebook';
 
@@ -53,19 +54,51 @@ class PublishNewsToFacebook extends Command
 
         $maxAge = max(
             1,
-            (int) config('services.facebook.max_article_age_hours', 48)
+            (int) config('services.facebook.max_article_age_hours', 24)
         );
+$minScore = max(
+    0,
+    min(100, (int) $this->option('min-score'))
+);
 
 $articles = NewsArticle::query()
-    ->where('facebook_publish_status', 'pending')
+    // Not already published
     ->whereNull('facebook_post_id')
+
+    // Only pending Facebook posts
+    ->where(function ($query) {
+        $query->where('facebook_publish_status', 'pending')
+            ->orWhereNull('facebook_publish_status');
+    })
+
+    // Must have successfully completed AI analysis
+    ->where('ai_status', 'analyzed')
+
+    // Minimum AI ranking score
+    ->whereNotNull('ai_score')
+    ->where('ai_score', '>=', $minScore)
+
+    // Do not automatically publish articles requiring review
+    ->where('ai_requires_review', false)
+
+    // Required publishing information
     ->whereNotNull('image_url')
+    ->where('image_url', '!=', '')
     ->whereNotNull('url')
+    ->where('url', '!=', '')
+
+    // Only today's news
     ->whereNotNull('published_at')
-    ->where('published_at', '>=', now()->subHours($maxAge))
     ->where('published_at', '<=', now())
+    ->whereDate('published_at', today())
+
+    // Highest AI score first
+    ->orderByDesc('ai_score')
+
+    // Newer article first when scores are equal
     ->orderByDesc('published_at')
     ->orderByDesc('id')
+
     ->limit($limit)
     ->get();
 
@@ -73,30 +106,35 @@ $articles = NewsArticle::query()
             $this->info('No eligible articles found.');
             return self::SUCCESS;
         }
+if ($this->option('dry-run')) {
+    foreach ($articles as $article) {
+        $this->line("ID: {$article->id}");
+        $this->line("Title: {$article->title}");
+        $this->line("AI Score: {$article->ai_score}/100");
+        $this->line("AI Priority: " . strtoupper($article->ai_priority ?? 'N/A'));
+        $this->line("Category: {$article->ai_category}");
+        $this->line("Image: {$article->image_url}");
+        $this->newLine();
+    }
 
-        if ($this->option('dry-run')) {
-            foreach ($articles as $article) {
-                $this->line("ID: {$article->id}");
-                $this->line("Title: {$article->title}");
-                $this->line("Image: {$article->image_url}");
-                $this->newLine();
-            }
-
-            return self::SUCCESS;
-        }
+    return self::SUCCESS;
+}
 
         $success = 0;
         $failed = 0;
 
         foreach ($articles as $article) {
-            $claimed = NewsArticle::query()
-                ->whereKey($article->id)
-                ->where('facebook_publish_status', 'pending')
-                ->whereNull('facebook_post_id')
-                ->update([
-                    'facebook_publish_status' => 'publishing',
-                    'facebook_error' => null,
-                ]);
+$claimed = NewsArticle::query()
+    ->whereKey($article->id)
+    ->whereNull('facebook_post_id')
+    ->where(function ($query) {
+        $query->where('facebook_publish_status', 'pending')
+              ->orWhereNull('facebook_publish_status');
+    })
+    ->update([
+        'facebook_publish_status' => 'publishing',
+        'facebook_error' => null,
+    ]);
 
             if (!$claimed) {
                 continue;
@@ -143,8 +181,14 @@ $articles = NewsArticle::query()
 
                 $success++;
 
-                $this->info("Published: {$article->title}");
-                $this->line("Facebook ID: {$postId}");
+      $this->info("Successfully published article!");
+$this->line("Article ID: {$article->id}");
+$this->line("Title: {$article->title}");
+$this->line("AI Score: {$article->ai_score}/100");
+$this->line("AI Priority: " . strtoupper($article->ai_priority ?? 'N/A'));
+$this->line("Category: {$article->ai_category}");
+$this->line("Facebook ID: {$postId}");
+$this->newLine();
             } catch (Throwable $e) {
                 $article->forceFill([
                     'facebook_publish_status' => 'failed',

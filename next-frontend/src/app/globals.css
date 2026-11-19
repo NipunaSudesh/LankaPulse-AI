@@ -118,3 +118,31 @@ body {
     }
   }
 }
+/* =========================================================
+   FACEBOOK DASHBOARD
+========================================================= */
+
+.dashboard-field {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #ffffff;
+  color: #111827;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.dashboard-field:focus {
+  border-color: #2563eb;
+}
+
+.dark .dashboard-field {
+  background: #1f2937;
+  border-color: #374151;
+  color: #f9fafb;
+}
+
+.dark .dashboard-field:focus {
+  border-color: #60a5fa;
+}
