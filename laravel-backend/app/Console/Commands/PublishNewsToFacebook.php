@@ -14,8 +14,9 @@ use Throwable;
 class PublishNewsToFacebook extends Command
 {
 protected $signature = 'news:publish-facebook
-                        {--limit= : Maximum posts to publish}
-                        {--min-score=70 : Minimum AI ranking score}
+                        {--limit=3 : Maximum number of high-priority posts}
+                        {--min-score=70 : Minimum score for fallback publishing}
+                        {--max-age=12 : Maximum article age in hours}
                         {--dry-run : Preview without publishing}';
 
     protected $description = 'Publish branded news graphics to Facebook';
@@ -52,60 +53,76 @@ protected $signature = 'news:publish-facebook
 
         $limit = min($remaining, $requestedLimit);
 
-        $maxAge = max(
-            1,
-            (int) config('services.facebook.max_article_age_hours', 24)
-        );
+$maxAge = max(1, (int) $this->option('max-age'));
+
 $minScore = max(
-    0,
+    70,
     min(100, (int) $this->option('min-score'))
 );
 
-$articles = NewsArticle::query()
-    // Not already published
-    ->whereNull('facebook_post_id')
+$cutoff = now()->subHours($maxAge);
 
-    // Only pending Facebook posts
+// Common conditions for newly fetched, unpublished articles.
+$eligibleQuery = NewsArticle::query()
+    ->whereNull('facebook_post_id')
     ->where(function ($query) {
         $query->where('facebook_publish_status', 'pending')
             ->orWhereNull('facebook_publish_status');
     })
-
-    // Must have successfully completed AI analysis
     ->where('ai_status', 'analyzed')
-
-    // Minimum AI ranking score
     ->whereNotNull('ai_score')
-    ->where('ai_score', '>=', $minScore)
-
-    // Do not automatically publish articles requiring review
     ->where('ai_requires_review', false)
-
-    // Required publishing information
     ->whereNotNull('image_url')
     ->where('image_url', '!=', '')
     ->whereNotNull('url')
     ->where('url', '!=', '')
-
-    // Only today's news
     ->whereNotNull('published_at')
-    ->where('published_at', '<=', now())
-    ->whereDate('published_at', today())
+    ->whereBetween('published_at', [$cutoff, now()])
+    ->where('created_at', '>=', $cutoff);
 
-    // Highest AI score first
+// Maximum three high-priority articles.
+$highLimit = min(3, $remaining, $requestedLimit);
+
+$articles = (clone $eligibleQuery)
+    ->where('ai_score', '>=', 85)
     ->orderByDesc('ai_score')
-
-    // Newer article first when scores are equal
     ->orderByDesc('published_at')
     ->orderByDesc('id')
-
-    ->limit($limit)
+    ->limit($highLimit)
     ->get();
 
-        if ($articles->isEmpty()) {
-            $this->info('No eligible articles found.');
-            return self::SUCCESS;
-        }
+// Fallback: only when there are NO articles scoring 85+.
+// Publish one article scoring at least 70.
+if ($articles->isEmpty()) {
+
+    $articles = (clone $eligibleQuery)
+        ->where('ai_score', '>=', $minScore)
+        ->orderByDesc('ai_score')
+        ->orderByDesc('published_at')
+        ->orderByDesc('id')
+        ->limit(1)
+        ->get();
+
+    if ($articles->isNotEmpty()) {
+        $this->warn(
+            'No eligible articles scored 85 or higher.'
+        );
+
+        $this->info(
+            'Publishing one fallback article with score >= ' . $minScore
+        );
+    }
+}
+
+if ($articles->isEmpty()) {
+    $this->info(
+        'No eligible new articles found within the last ' . $maxAge . ' hours.'
+    );
+
+    return self::SUCCESS;
+}
+
+
 if ($this->option('dry-run')) {
     foreach ($articles as $article) {
         $this->line("ID: {$article->id}");
@@ -181,13 +198,24 @@ $claimed = NewsArticle::query()
 
                 $success++;
 
-      $this->info("Successfully published article!");
+$this->info("Successfully published article!");
+
 $this->line("Article ID: {$article->id}");
 $this->line("Title: {$article->title}");
+
+$this->line(
+    "Published Date: " .
+    ($article->published_at
+        ? $article->published_at->format('Y-m-d H:i:s')
+        : 'Unknown')
+);
+
 $this->line("AI Score: {$article->ai_score}/100");
 $this->line("AI Priority: " . strtoupper($article->ai_priority ?? 'N/A'));
 $this->line("Category: {$article->ai_category}");
+$this->line("Source: {$article->source_name}");
 $this->line("Facebook ID: {$postId}");
+
 $this->newLine();
             } catch (Throwable $e) {
                 $article->forceFill([

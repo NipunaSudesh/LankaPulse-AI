@@ -85,11 +85,37 @@ class FacebookGraphicGenerator
         ];
     }
 
-    private function getSinhalaHeadlineSize(?string $titleSi): int
+private function getSinhalaHeadlineSize(?string $titleSi): int
 {
     $length = mb_strlen(trim($titleSi ?? ''), 'UTF-8');
 
-    return $length > 100 ? 45 : 55;
+    // Short headlines
+    if ($length <= 60) {
+        return 52;
+    }
+
+    // Gradually reduce font size for longer headlines
+    if ($length <= 80) {
+        return 49;
+    }
+
+    if ($length <= 100) {
+        return 46;
+    }
+
+    if ($length <= 120) {
+        return 43;
+    }
+
+    if ($length <= 140) {
+        return 40;
+    }
+
+    if ($length <= 160) {
+        return 37;
+    }
+
+    return 34;
 }
 
     private function buildHtml(NewsArticle $article, array $o): string

@@ -289,7 +289,13 @@ ${summarySi}
 
 📰  ${titleEn}
 
+
 ${summaryEn}
+
+━━━━━━━━━━━━━━━━━━
+
+🔗 Read More / සම්පූර්ණ පුවත:
+https://lanka-pulse-ai.vercel.app/
 
 #LankaPulseAI #SriLankaNews #SriLanka #BreakingNews #LatestNews #NewsUpdate #LocalNews #WorldNews #SriLankanNews #NewsToday #CurrentAffairs #StayInformed #NewsIntelligence #DailyNews #SriLankaUpdates #TrustedNews #TrendingNews #SinhalaNews #EnglishNews #LankaNews`
     );
@@ -646,30 +652,31 @@ ${summaryEn}
                 </option>
 
                 {articles.map((article, index) => (
-                  <option
-                    key={article.id}
-                    value={article.id}
-                    disabled={
-                      Boolean(article.facebook_post_id) ||
-                      article.facebook_publish_status ===
-                        "publishing"
-                    }
-                  >
-                    {`Article ${index + 1} | #${article.id} - ${
-                      article.title
-                    } | ${
-                      article.published_at
-                        ? article.published_at
-                            .replace("T", " ")
-                            .replace(/Z$/, "")
-                            .slice(0, 16)
-                        : "Date unavailable"
-                    }${
-                      article.facebook_post_id
-                        ? " (Published)"
-                        : ""
-                    }`}
-                  </option>
+      <option
+        key={article.id}
+        value={article.id}
+        disabled={
+          Boolean(article.facebook_post_id) ||
+          article.facebook_publish_status === "publishing"
+        }
+      >
+        {`Article ${index + 1} | #${article.id} - ${
+          article.title
+        } | AI Score: ${
+          article.ai_score ?? "N/A"
+        }/100 | ${
+          article.published_at
+            ? article.published_at
+                .replace("T", " ")
+                .replace(/Z$/, "")
+                .slice(0, 16)
+            : "Date unavailable"
+        }${
+          article.facebook_post_id
+            ? " (Published)"
+            : ""
+        }`}
+      </option>
                 ))}
               </select>
             </Field>
