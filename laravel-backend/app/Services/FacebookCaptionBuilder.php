@@ -56,6 +56,9 @@ class FacebookCaptionBuilder
         // $caption .= "\n\nසම්පූර්ණ පුවත / Read more: "
         //     . $article->url;
 
+$caption .= "\n\n🔗 Read More / සම්පූර්ණ පුවත:\n";
+$caption .= "https://lanka-pulse-ai.vercel.app/";
+
         $caption .= "\n\n#LankaPulseAI #SriLankaNews #ශ්‍රීලංකාව#SriLankaNews #SriLanka #BreakingNews #LatestNews #NewsUpdate #LocalNews #WorldNews #SriLankanNews #NewsToday #CurrentAffairs #StayInformed #NewsIntelligence #DailyNews #SriLankaUpdates #TrustedNews #TrendingNews #SinhalaNews #EnglishNews #LankaNews";
 
         return $caption;
