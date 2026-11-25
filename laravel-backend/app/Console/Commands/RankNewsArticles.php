@@ -22,13 +22,18 @@ class RankNewsArticles extends Command
     ): int {
         $limit = max(1, min(100, (int) $this->option('limit')));
 
-        $articles = NewsArticle::query()
-            ->where('ai_status', 'pending')
-            ->whereNotNull('title')
-            ->where('title', '!=', '')
-            ->orderByDesc('published_at')
-            ->limit($limit)
-            ->get();
+$cutoff = now()->subHours(12);
+
+$articles = NewsArticle::query()
+    ->where('ai_status', 'pending')
+    ->whereNotNull('title')
+    ->where('title', '!=', '')
+    ->whereNotNull('published_at')
+    ->whereBetween('published_at', [$cutoff, now()])
+    ->where('created_at', '>=', $cutoff)
+    ->orderByDesc('published_at')
+    ->limit($limit)
+    ->get();
 
         if ($articles->isEmpty()) {
             $this->info('No pending articles for AI analysis.');

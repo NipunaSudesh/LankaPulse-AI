@@ -68,7 +68,7 @@ return [
     'page_access_token' => env('FACEBOOK_PAGE_ACCESS_TOKEN'),
 
     'auto_publish' => env('FACEBOOK_AUTO_PUBLISH', true),
-    'daily_limit' => (int) env('FACEBOOK_DAILY_LIMIT', 20),
+    'daily_limit' => (int) env('FACEBOOK_DAILY_LIMIT', 60),
     'max_article_age_hours' => (int) env('FACEBOOK_MAX_ARTICLE_AGE_HOURS', 48),
 
     'publish_api_key' => env('FACEBOOK_PUBLISH_API_KEY'),
