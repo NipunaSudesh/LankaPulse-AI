@@ -62,6 +62,10 @@ return [
     'host' => env('RAPIDAPI_HOST'),
 ],
 
+'options' => extension_loaded('pdo_mysql') ? array_filter([
+    PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+]) : [],
+
 'facebook' => [
     'graph_version' => env('FACEBOOK_GRAPH_VERSION', 'v26.0'),
     'page_id' => env('FACEBOOK_PAGE_ID'),
