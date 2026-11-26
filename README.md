@@ -1,37 +1,330 @@
-# LankaPulse AI — Sri Lankan News Intelligence Platform
+# LankaPulse AI 🇱🇰
 
-**LankaPulse AI** is an AI-powered news aggregation and intelligence platform designed to bring Sri Lankan news from multiple permitted public sources into one centralized dashboard.
+### AI-Powered Sri Lankan News Aggregation & Intelligence Platform
 
-The platform collects, categorizes, and analyzes news across politics, crime, business, economy, technology, sports, health, education, weather, public safety, and other important topics. It uses AI-assisted classification, summarization, duplicate detection, and relevance scoring to help users discover important stories and understand developing events more efficiently.
+LankaPulse AI is a full-stack news intelligence platform that collects, categorizes, summarizes, and analyzes Sri Lankan news from multiple permitted public sources through a centralized dashboard.
 
-Built with **Next.js, Laravel, MySQL, and AI integration**, the system provides a public news dashboard and an administrative interface for reviewing AI-generated analyses, managing articles, monitoring trends, and approving social media posts.
+Powered by AI-assisted classification, summarization, duplicate detection, and relevance scoring, the platform helps users discover important news and follow developing stories more efficiently.
 
-### Key Features
+## 🌐 Live Applications
 
-- **Multi-source News Aggregation:** Collect articles from permitted RSS feeds and public news APIs.
-- **AI-Powered Classification:** Automatically organize news into relevant categories.
-- **Intelligent Summarization:** Generate concise summaries while linking to original reporting.
-- **Duplicate Story Detection:** Identify duplicate and near-duplicate coverage across publishers.
-- **News Search and Filtering:** Search by keyword and filter by category, source, and publication date.
-- **Trending News Analytics:** Identify frequently covered stories and emerging topics.
-- **News Intelligence Dashboard:** Explore relevant entities, story timelines, and source coverage.
-- **Admin Management:** Review, edit, approve, or reject AI-generated content.
-- **Social Media Integration:** Support scheduled Facebook Page publishing with human approval.
-- **Responsive Interface:** Provide an accessible experience across desktop and mobile devices.
+| Platform | Link |
+|---|---|
+| Frontend | [lanka-pulse-ai.vercel.app](https://lanka-pulse-ai.vercel.app/) |
+| Backend | [lankapulse-ai.onrender.com](https://lankapulse-ai.onrender.com) |
+| Facebook Page | [LankaPulse AI](https://web.facebook.com/profile.php?id=61596601900604) |
+| GitHub Repository | [NipunaSudesh/LankaPulse-AI](https://github.com/NipunaSudesh/LankaPulse-AI) |
 
-### Technology Stack
+## ✨ Key Features
 
-- **Frontend:** Next.js, React, Tailwind CSS
-- **Backend:** Laravel, PHP, REST API
-- **Database:** MySQL
-- **AI:** Replaceable AI service integration with support for available free models and rule-based fallbacks
-- **News Sources:** Permitted RSS feeds and public news APIs
-- **Deployment:** Separate frontend and backend deployments connected to one GitHub monorepo
+- **Multi-Source News Aggregation:** Collect news from public APIs and permitted RSS feeds.
+- **AI-Powered Classification:** Automatically categorize news into relevant topics.
+- **Intelligent Summarization:** Generate concise summaries of news articles.
+- **AI Relevance Scoring:** Evaluate and prioritize important news.
+- **Duplicate Detection:** Identify duplicate and similar news articles.
+- **News Search & Filtering:** Search articles by keywords, categories, sources, and dates.
+- **News Intelligence Dashboard:** Explore news trends and developing stories.
+- **Bilingual Content Support:** Support for English and Sinhala news content.
+- **Admin Dashboard:** Manage articles, review AI analysis, and monitor publishing activity.
+- **Facebook Integration:** Support automated and controlled Facebook Page publishing.
+- **Responsive Design:** Accessible across desktop and mobile devices.
 
-### Project Objective
+## 🛠️ Technology Stack
 
-The goal is to reduce the effort required to follow news from multiple publishers by organizing information, highlighting developing stories, and providing AI-assisted insights while preserving links to original sources.
+| Category | Technologies |
+|---|---|
+| Frontend | Next.js, React, TypeScript |
+| Styling | Tailwind CSS |
+| Backend | Laravel 12, PHP 8.2 |
+| Database | TiDB Cloud (MySQL-compatible) |
+| AI Integration | Google Gemini |
+| API Architecture | REST API |
+| Authentication | Laravel Sanctum |
+| News Integration | News APIs, RSS Feeds |
+| Social Media | Facebook Graph API |
+| Frontend Hosting | Vercel |
+| Backend Hosting | Render |
+| Automation | GitHub Actions |
+| Version Control | Git, GitHub |
 
-LankaPulse AI is a full-stack software engineering portfolio project demonstrating API integration, scheduled background processing, data normalization, deduplication, AI integration, analytics, authentication, testing, and deployment.
+## 🏗️ System Architecture
 
-**Responsible AI principle:** AI-generated summaries and interpretations are clearly distinguished from original reporting. Source attribution, human review, and appropriate safeguards are especially important for crime, politics, and public safety news.
+LankaPulse AI follows a separated frontend and backend architecture within a single GitHub monorepo.
+
+```text
+             NEWS SOURCES
+          APIs and RSS Feeds
+                  |
+                  v
+          LARAVEL BACKEND
+               Render
+                  |
+       +----------+----------+
+       |          |          |
+   Collection   AI Analysis  Processing
+       |          |          |
+       +----------+----------+
+                  |
+                  v
+             TiDB CLOUD
+           MySQL Database
+                  |
+                  v
+             REST API
+                  |
+                  v
+           NEXT.JS FRONTEND
+                Vercel
+                  |
+          Public News Dashboard
+
+          GITHUB ACTIONS
+                  |
+          Laravel Scheduler
+                  |
+          Automated Pipeline
+                  |
+          FACEBOOK GRAPH API
+```
+
+## 📂 Project Structure
+
+```text
+LankaPulse-AI/
+│
+├── next-frontend/
+│   ├── app/
+│   ├── components/
+│   ├── public/
+│   ├── src/
+│   └── package.json
+│
+├── laravel-backend/
+│   ├── app/
+│   │   ├── Console/
+│   │   ├── Http/
+│   │   ├── Models/
+│   │   └── Services/
+│   ├── config/
+│   ├── database/
+│   │   ├── migrations/
+│   │   └── seeders/
+│   ├── routes/
+│   ├── composer.json
+│   └── artisan
+│
+└── .github/
+    └── workflows/
+        └── laravel-scheduler.yml
+```
+
+## ⚙️ Local Development Setup
+
+### Prerequisites
+
+- Node.js and npm
+- PHP 8.2+
+- Composer
+- MySQL-compatible database access
+- Git
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/NipunaSudesh/LankaPulse-AI.git
+
+cd LankaPulse-AI
+```
+
+### 2. Backend Setup
+
+```bash
+cd laravel-backend
+
+composer install
+
+copy .env.example .env
+```
+
+Configure the backend `.env` file with your database, AI, news API, and Facebook credentials.
+
+Generate an application key for a new local installation:
+
+```bash
+php artisan key:generate
+```
+
+Run migrations only when setting up a new database:
+
+```bash
+php artisan migrate
+```
+
+Start the Laravel development server:
+
+```bash
+php artisan serve
+```
+
+Backend URL:
+
+```text
+http://127.0.0.1:8000
+```
+
+### 3. Frontend Setup
+
+Open another terminal:
+
+```bash
+cd next-frontend
+
+npm install
+```
+
+Create `.env.local`:
+
+```env
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1
+```
+
+Start the frontend:
+
+```bash
+npm run dev
+```
+
+Frontend URL:
+
+```text
+http://localhost:3000
+```
+
+Build for production:
+
+```bash
+npm run build
+```
+
+## 🗄️ Database Configuration
+
+LankaPulse AI uses **TiDB Cloud**, a MySQL-compatible cloud database.
+
+| Setting | Value |
+|---|---|
+| Database Provider | TiDB Cloud |
+| Cluster | lankapulse-mysql |
+| Branch | main |
+| Database | lankapulse_ai |
+| Port | 4000 |
+| Driver | MySQL |
+| Connection | TLS / SSL |
+
+Configure the database connection in the backend `.env` file:
+
+```env
+DB_CONNECTION=mysql
+DB_HOST=your-tidb-host
+DB_PORT=4000
+DB_DATABASE=lankapulse_ai
+DB_USERNAME=your-database-username
+DB_PASSWORD=your-database-password
+
+MYSQL_ATTR_SSL_CA=/path/to/ca-certificate.pem
+```
+
+**Note:** Replace the example credentials and certificate path with your own configuration. Never commit database credentials or certificates containing private keys.
+
+## 🤖 News Processing & Automation
+
+The Laravel backend provides an automated news-processing pipeline.
+
+Run the complete pipeline:
+
+```bash
+php artisan news:run-pipeline
+```
+
+Individual commands:
+
+```bash
+php artisan news:fetch-sri-lanka
+php artisan news:prepare-facebook
+php artisan news:publish-facebook --dry-run
+```
+
+### Laravel Scheduler
+
+Scheduled tasks are configured in:
+
+```text
+laravel-backend/routes/console.php
+```
+
+Current schedule:
+
+```php
+Schedule::command('news:run-pipeline')
+    ->hourly()
+    ->withoutOverlapping();
+```
+
+GitHub Actions triggers Laravel's scheduler every five minutes:
+
+```yaml
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+```
+
+Laravel determines whether the hourly pipeline is due.
+
+Sensitive configuration is managed through GitHub Actions repository secrets.
+
+## 📱 Facebook Integration
+
+LankaPulse AI integrates with the Facebook Graph API to support news publishing.
+
+Features include:
+
+- Facebook Page integration.
+- Automated article publishing.
+- AI-assisted content selection.
+- Daily publishing limits.
+- Article age restrictions.
+- Publishing status tracking.
+- Duplicate publishing safeguards.
+- Administrative publishing controls.
+
+Facebook configuration is managed through protected environment variables.
+
+## 🚀 Deployment
+
+| Component | Hosting Platform |
+|---|---|
+| Next.js Frontend | Vercel |
+| Laravel Backend | Render |
+| Database | TiDB Cloud |
+| Scheduled Automation | GitHub Actions |
+| Source Code | GitHub |
+
+The frontend communicates with the Laravel backend through REST API endpoints.
+
+## 🔐 Security
+
+- Store API keys and credentials in environment variables.
+- Use GitHub Actions secrets for automated workflows.
+- Secure database connections with TLS.
+- Protect administrative endpoints with authentication and authorization.
+- Never expose database passwords, API keys, or Facebook access tokens in source control.
+
+## 🎯 Project Objective
+
+LankaPulse AI aims to simplify access to Sri Lankan news by bringing information from multiple publishers into one intelligent platform.
+
+The project demonstrates practical full-stack software engineering, AI integration, API development, cloud database management, background automation, data processing, and third-party service integration.
+
+---
+
+**LankaPulse AI — Stay Informed. Think Smarter.**
