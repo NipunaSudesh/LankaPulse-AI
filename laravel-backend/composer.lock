@@ -3449,16 +3449,16 @@
         },
         {
             "name": "spatie/browsershot",
-            "version": "5.5.0",
+            "version": "5.5.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/spatie/browsershot.git",
-                "reference": "eba71ab7f4aba23d9321d653ccd19d4e94432516"
+                "reference": "90a4dbabc71406a6f41f21d8ec9c5aa53969efc4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/spatie/browsershot/zipball/eba71ab7f4aba23d9321d653ccd19d4e94432516",
-                "reference": "eba71ab7f4aba23d9321d653ccd19d4e94432516",
+                "url": "https://api.github.com/repos/spatie/browsershot/zipball/90a4dbabc71406a6f41f21d8ec9c5aa53969efc4",
+                "reference": "90a4dbabc71406a6f41f21d8ec9c5aa53969efc4",
                 "shasum": ""
             },
             "require": {
@@ -3505,7 +3505,7 @@
                 "webpage"
             ],
             "support": {
-                "source": "https://github.com/spatie/browsershot/tree/5.5.0"
+                "source": "https://github.com/spatie/browsershot/tree/5.5.1"
             },
             "funding": [
                 {
@@ -3513,7 +3513,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-11-06T09:42:13+00:00"
+            "time": "2026-11-23T14:34:09+00:00"
         },
         {
             "name": "spatie/temporary-directory",
