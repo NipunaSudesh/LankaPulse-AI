@@ -181,23 +181,25 @@ class FacebookGraphicGenerator
 
         // Logo from the Laravel public directory, embedded as base64.
         $logoHtml = '';
-        $logoPath = public_path('LP_logo.png');
+        $logoPath = public_path('LP_Logo.png');
 
-        if (file_exists($logoPath)) {
-            $logoBase64 = base64_encode(file_get_contents($logoPath));
+if (!file_exists($logoPath)) {
+    throw new RuntimeException(
+        'LankaPulse AI logo not found: ' . $logoPath
+    );
+}
 
-            $logoHtml = '<div class="logo-wrap"><div class="logo-box">'
-                . '<img src="data:image/png;base64,' . $logoBase64 . '" alt="LankaPulse AI">'
-                . '</div></div>';
-        }
+if (!is_readable($logoPath)) {
+    throw new RuntimeException(
+        'LankaPulse AI logo is not readable: ' . $logoPath
+    );
+}
 
-        $dateHtml = $o['showDate']
-            ? '<div class="date">' . $date . '</div>'
-            : '';
+$logoBase64 = base64_encode(file_get_contents($logoPath));
 
-        $titleEnHtml = $o['showEn']
-            ? '<div class="title-en">' . $titleEn . '</div>'
-            : '';
+$logoHtml = '<div class="logo-wrap"><div class="logo-box">'
+    . '<img src="data:image/png;base64,' . $logoBase64 . '" alt="LankaPulse AI">'
+    . '</div></div>';
 
         return <<<HTML
 <!DOCTYPE html>
