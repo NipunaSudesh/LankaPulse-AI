@@ -57,15 +57,16 @@ class FacebookGraphicGenerator
         );
 
         try {
-            Browsershot::html($html)
-                ->setNodeModulePath(base_path('node_modules'))
-                ->noSandbox()
-                ->windowSize(self::WIDTH, self::HEIGHT)
-                ->deviceScaleFactor(1)
-                ->setScreenshotType('png')
-                ->waitUntilNetworkIdle()
-                ->setDelay(500)
-                ->save($path);
+     Browsershot::html($html)
+    ->setNodeModulePath(base_path('node_modules'))
+    ->noSandbox()
+    ->windowSize(self::WIDTH, self::HEIGHT)
+    ->deviceScaleFactor(1)
+    ->setScreenshotType('png')
+->waitUntilNetworkIdle()
+->waitForFunction("document.fonts.ready.then(() => true)")
+->setDelay(1500)
+    ->save($path);
         } catch (\Throwable $e) {
             throw new RuntimeException(
                 'Facebook graphic generation failed: ' . $e->getMessage(),
