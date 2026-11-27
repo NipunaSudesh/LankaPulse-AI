@@ -15,6 +15,7 @@ class FacebookGraphicGenerator
     private const WIDTH = 1080;
     private const HEIGHT = 1350;
 
+    // Same palette as THEMES in the React page.
     private const THEMES = [
         'alert'   => ['from' => '#e11d2e', 'to' => '#6b0812', 'chip' => '#facc15'],
         'pulse'   => ['from' => '#0000e6', 'to' => '#020a5c', 'chip' => '#00ffff'],
@@ -32,15 +33,20 @@ class FacebookGraphicGenerator
     ];
 
     private const LATIN_FONT = "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
-
-    private const SINHALA_FONT = "'Noto Sans Sinhala', 'Iskoola Pota', 'Nirmala UI', sans-serif";
+    private const SINHALA_FONT = "'Noto Sans Sinhala', sans-serif";
 
     public function generate(NewsArticle $article, array $options = []): string
     {
         $directory = storage_path('app/facebook-graphics');
 
-        if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) {
-            throw new RuntimeException('Unable to create Facebook graphics directory.');
+        if (
+            !is_dir($directory)
+            && !mkdir($directory, 0755, true)
+            && !is_dir($directory)
+        ) {
+            throw new RuntimeException(
+                'Unable to create Facebook graphics directory.'
+            );
         }
 
         $path = $directory . '/article-' . $article->id . '-' . uniqid() . '.png';
@@ -58,8 +64,8 @@ class FacebookGraphicGenerator
                 ->deviceScaleFactor(1)
                 ->setScreenshotType('png')
                 ->waitUntilNetworkIdle()
+                ->setDelay(500)
                 ->save($path);
-
         } catch (\Throwable $e) {
             throw new RuntimeException(
                 'Facebook graphic generation failed: ' . $e->getMessage(),
@@ -68,7 +74,9 @@ class FacebookGraphicGenerator
         }
 
         if (!file_exists($path) || filesize($path) === 0) {
-            throw new RuntimeException('Generated Facebook graphic is empty.');
+            throw new RuntimeException(
+                'Generated Facebook graphic is empty.'
+            );
         }
 
         return $path;
@@ -122,19 +130,29 @@ class FacebookGraphicGenerator
 
     private function buildHtml(NewsArticle $article, array $o): string
     {
-        $titleSi = $this->escape($article->title_si ?: $article->title);
-        $titleEn = $this->escape($article->title ?: $article->title_si);
+        $titleSi = $this->escape(
+            $article->title_si ?: $article->title
+        );
+
+        $titleEn = $this->escape(
+            $article->title ?: $article->title_si
+        );
 
         $date = $this->escape(
             ($article->published_at ?? now())->format('Y-m-d')
         );
 
+        // Theme colours come from the constant above, never from user input.
         $from = $o['theme']['from'];
         $to = $o['theme']['to'];
         $chip = $o['theme']['chip'];
 
-        $sinhalaSize = $this->getSinhalaHeadlineSize(
-            $article->title_si ?: $article->title
+        // Automatically size the headline, respecting the configured maximum.
+        $sinhalaSize = min(
+            $this->getSinhalaHeadlineSize(
+                $article->title_si ?: $article->title
+            ),
+            $o['sinhalaSize']
         );
 
         $titleSiMax = $o['showEn'] ? 230 : 290;
@@ -142,7 +160,7 @@ class FacebookGraphicGenerator
         $latinFont = self::LATIN_FONT;
         $sinhalaFont = self::SINHALA_FONT;
 
-        // News photo
+        // News photo (same behaviour as NewsPhoto in React: contain + position + zoom).
         $imageUrl = trim((string) $article->image_url);
         $photoHtml = '';
 
@@ -160,7 +178,7 @@ class FacebookGraphicGenerator
             );
         }
 
-        // Logo from Laravel public directory
+        // Logo from the Laravel public directory, embedded as base64.
         $logoHtml = '';
         $logoPath = public_path('LP_logo.png');
 
@@ -213,7 +231,7 @@ body {
     background: #081326;
 }
 
-/* Header */
+/* ---------- Header ---------- */
 
 .header {
     position: absolute;
@@ -248,7 +266,7 @@ body {
     text-shadow: 0 0 30px rgba(255,255,255,.25);
 }
 
-/* Photo area */
+/* ---------- Photo area ---------- */
 
 .photo-area {
     position: absolute;
@@ -276,7 +294,7 @@ body {
     z-index: 2;
 }
 
-/* Brand badge */
+/* ---------- Brand badge on the photo ---------- */
 
 .photo-brand {
     position: absolute;
@@ -335,11 +353,9 @@ body {
     color: #ffffff;
 }
 
-.brand-name span {
-    color: #67e8f9;
-}
+.brand-name span { color: #67e8f9; }
 
-/* Date badge */
+/* ---------- Date badge ---------- */
 
 .date {
     position: absolute;
@@ -354,7 +370,7 @@ body {
     letter-spacing: 0.025em;
 }
 
-/* Headline panel */
+/* ---------- Headline panel ---------- */
 
 .headline-panel {
     position: absolute;
