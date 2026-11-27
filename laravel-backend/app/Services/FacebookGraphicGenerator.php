@@ -183,23 +183,21 @@ class FacebookGraphicGenerator
         $logoHtml = '';
         $logoPath = public_path('LP_Logo.png');
 
-if (!file_exists($logoPath)) {
-    throw new RuntimeException(
-        'LankaPulse AI logo not found: ' . $logoPath
-    );
-}
+        if (file_exists($logoPath)) {
+            $logoBase64 = base64_encode(file_get_contents($logoPath));
 
-if (!is_readable($logoPath)) {
-    throw new RuntimeException(
-        'LankaPulse AI logo is not readable: ' . $logoPath
-    );
-}
+            $logoHtml = '<div class="logo-wrap"><div class="logo-box">'
+                . '<img src="data:image/png;base64,' . $logoBase64 . '" alt="LankaPulse AI">'
+                . '</div></div>';
+        }
 
-$logoBase64 = base64_encode(file_get_contents($logoPath));
+        $dateHtml = $o['showDate']
+            ? '<div class="date">' . $date . '</div>'
+            : '';
 
-$logoHtml = '<div class="logo-wrap"><div class="logo-box">'
-    . '<img src="data:image/png;base64,' . $logoBase64 . '" alt="LankaPulse AI">'
-    . '</div></div>';
+        $titleEnHtml = $o['showEn']
+            ? '<div class="title-en">' . $titleEn . '</div>'
+            : '';
 
         return <<<HTML
 <!DOCTYPE html>
