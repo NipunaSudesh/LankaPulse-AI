@@ -6,20 +6,28 @@ on:
     - cron: '*/5 * * * *'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   scheduler:
+    name: Run Laravel News Pipeline
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     defaults:
       run:
         working-directory: laravel-backend
+        shell: bash
 
     steps:
+      # 1. Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           ref: main
 
+      # 2. Setup PHP
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -27,16 +35,139 @@ jobs:
           extensions: mbstring, xml, curl, mysql, zip, bcmath, gd, intl
           coverage: none
 
+      # 3. Install dependencies
       - name: Install Composer dependencies
-        run: composer install --no-interaction --prefer-dist --no-dev
+        run: |
+          composer install \
+            --no-interaction \
+            --prefer-dist \
+            --no-dev \
+            --optimize-autoloader \
+            --no-progress
 
+      # 4. Validate required configuration
+      - name: Validate environment configuration
+        env:
+          APP_KEY: ${{ secrets.APP_KEY }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_DATABASE: ${{ secrets.DB_DATABASE }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          TIDB_CA_CERT: ${{ secrets.TIDB_CA_CERT }}
+
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+          FACEBOOK_GRAPH_VERSION: ${{ secrets.FACEBOOK_GRAPH_VERSION }}
+          FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+          FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+          FACEBOOK_AUTO_PUBLISH: ${{ secrets.FACEBOOK_AUTO_PUBLISH }}
+
+          WORLD_NEWS_API_KEY: ${{ secrets.WORLD_NEWS_API_KEY }}
+          IDUWARA_NEWS_API_KEY: ${{ secrets.IDUWARA_NEWS_API_KEY }}
+          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
+          NEWS_DATA_API_KEY: ${{ secrets.NEWS_DATA_API_KEY }}
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
+
+        run: |
+          set -euo pipefail
+
+          echo "=================================="
+          echo "LANKAPULSE AI CONFIGURATION CHECK"
+          echo "=================================="
+
+          required=(
+            APP_KEY
+            DB_HOST
+            DB_PORT
+            DB_DATABASE
+            DB_USERNAME
+            DB_PASSWORD
+            TIDB_CA_CERT
+            GEMINI_API_KEY
+            FACEBOOK_AUTO_PUBLISH
+          )
+
+          for key in "${required[@]}"; do
+            if [[ -z "${!key:-}" ]]; then
+              echo "::error::Missing required GitHub secret: $key"
+              exit 1
+            else
+              echo "OK: $key configured"
+            fi
+          done
+
+          if ! [[ "$DB_PORT" =~ ^[0-9]+$ ]]; then
+            echo "::error::DB_PORT must be numeric"
+            exit 1
+          fi
+
+          case "${FACEBOOK_AUTO_PUBLISH,,}" in
+            true|false)
+              echo "OK: Facebook auto-publishing setting is valid"
+              ;;
+            *)
+              echo "::error::FACEBOOK_AUTO_PUBLISH must be true or false"
+              exit 1
+              ;;
+          esac
+
+          if [[ "${FACEBOOK_AUTO_PUBLISH,,}" == "true" ]]; then
+            for key in FACEBOOK_PAGE_ID FACEBOOK_PAGE_ACCESS_TOKEN FACEBOOK_GRAPH_VERSION; do
+              if [[ -z "${!key:-}" ]]; then
+                echo "::error::Missing required Facebook secret: $key"
+                exit 1
+              fi
+            done
+
+            echo "Facebook automatic publishing: ENABLED"
+          else
+            echo "::warning::Facebook automatic publishing is DISABLED"
+          fi
+
+          news_keys=(
+            WORLD_NEWS_API_KEY
+            IDUWARA_NEWS_API_KEY
+            NEWSAPI_KEY
+            NEWS_DATA_API_KEY
+            RAPIDAPI_KEY
+          )
+
+          configured=0
+
+          for key in "${news_keys[@]}"; do
+            if [[ -n "${!key:-}" ]]; then
+              ((configured+=1))
+            fi
+          done
+
+          echo "News API credentials configured: $configured"
+
+          if [[ "$configured" -eq 0 ]]; then
+            echo "::warning::No optional news API credentials configured. Check your news source configuration."
+          fi
+
+          echo "Configuration validation completed."
+
+      # 5. Configure TiDB SSL
       - name: Configure TiDB SSL certificate
         env:
           TIDB_CA_CERT: ${{ secrets.TIDB_CA_CERT }}
         run: |
+          set -euo pipefail
+
           mkdir -p certificates
+
           printf '%s\n' "$TIDB_CA_CERT" > certificates/tidb-ca.pem
 
+          if [[ ! -s certificates/tidb-ca.pem ]]; then
+            echo "::error::TiDB SSL certificate is empty"
+            exit 1
+          fi
+
+          echo "TiDB SSL certificate configured."
+
+      # 6. Run Laravel scheduler
       - name: Run Laravel scheduler
         env:
           APP_ENV: production
@@ -72,5 +203,38 @@ jobs:
           FACEBOOK_PUBLISH_API_KEY: ${{ secrets.FACEBOOK_PUBLISH_API_KEY }}
 
         run: |
+          set -euo pipefail
+
+          echo "=================================="
+          echo "LANKAPULSE AI NEWS AUTOMATION"
+          echo "=================================="
+
+          echo ""
+          echo "Clearing Laravel configuration cache..."
           php artisan config:clear
-          php artisan schedule:run
+
+          echo ""
+          echo "Checking scheduled tasks..."
+          php artisan schedule:list
+
+          echo ""
+          echo "Executing Laravel scheduler..."
+          php artisan schedule:run -v
+
+          echo ""
+          echo "Laravel scheduler execution finished."
+
+      # 7. Completion
+      - name: Pipeline execution status
+        if: success()
+        run: |
+          echo "=================================="
+          echo "LANKAPULSE AI SCHEDULER SUCCESS"
+          echo "=================================="
+          echo "Scheduler completed without reported errors."
+
+      - name: Pipeline failure notification
+        if: failure()
+        run: |
+          echo "::error::LankaPulse AI scheduler encountered an error."
+          echo "Check the failed step above for details."
