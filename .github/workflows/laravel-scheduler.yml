@@ -9,6 +9,11 @@ on:
 permissions:
   contents: read
 
+# Prevent two pipeline executions from running simultaneously.
+concurrency:
+  group: lankapulse-news-pipeline
+  cancel-in-progress: false
+
 jobs:
   scheduler:
     name: Run Laravel News Pipeline
@@ -23,7 +28,7 @@ jobs:
     steps:
       # 1. Checkout repository
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: main
 
@@ -35,7 +40,7 @@ jobs:
           extensions: mbstring, xml, curl, mysql, zip, bcmath, gd, intl
           coverage: none
 
-      # 3. Install dependencies
+      # 3. Install Composer dependencies
       - name: Install Composer dependencies
         run: |
           composer install \
@@ -45,10 +50,11 @@ jobs:
             --optimize-autoloader \
             --no-progress
 
-      # 4. Validate required configuration
+      # 4. Validate configuration
       - name: Validate environment configuration
         env:
           APP_KEY: ${{ secrets.APP_KEY }}
+
           DB_HOST: ${{ secrets.DB_HOST }}
           DB_PORT: ${{ secrets.DB_PORT }}
           DB_DATABASE: ${{ secrets.DB_DATABASE }}
@@ -92,9 +98,9 @@ jobs:
             if [[ -z "${!key:-}" ]]; then
               echo "::error::Missing required GitHub secret: $key"
               exit 1
-            else
-              echo "OK: $key configured"
             fi
+
+            echo "OK: $key configured"
           done
 
           if ! [[ "$DB_PORT" =~ ^[0-9]+$ ]]; then
@@ -104,7 +110,7 @@ jobs:
 
           case "${FACEBOOK_AUTO_PUBLISH,,}" in
             true|false)
-              echo "OK: Facebook auto-publishing setting is valid"
+              echo "OK: Facebook publishing setting is valid"
               ;;
             *)
               echo "::error::FACEBOOK_AUTO_PUBLISH must be true or false"
@@ -144,12 +150,12 @@ jobs:
           echo "News API credentials configured: $configured"
 
           if [[ "$configured" -eq 0 ]]; then
-            echo "::warning::No optional news API credentials configured. Check your news source configuration."
+            echo "::warning::No news API credentials configured"
           fi
 
           echo "Configuration validation completed."
 
-      # 5. Configure TiDB SSL
+      # 5. Configure TiDB SSL certificate
       - name: Configure TiDB SSL certificate
         env:
           TIDB_CA_CERT: ${{ secrets.TIDB_CA_CERT }}
@@ -167,8 +173,8 @@ jobs:
 
           echo "TiDB SSL certificate configured."
 
-      # 6. Run Laravel scheduler
-      - name: Run Laravel scheduler
+      # 6. Execute the complete news pipeline directly
+      - name: Run LankaPulse AI pipeline
         env:
           APP_ENV: production
           APP_DEBUG: false
@@ -206,7 +212,7 @@ jobs:
           set -euo pipefail
 
           echo "=================================="
-          echo "LANKAPULSE AI NEWS AUTOMATION"
+          echo "LANKAPULSE AI AUTOMATED PIPELINE"
           echo "=================================="
 
           echo ""
@@ -214,27 +220,30 @@ jobs:
           php artisan config:clear
 
           echo ""
-          echo "Checking scheduled tasks..."
-          php artisan schedule:list
+          echo "Checking database connection..."
+          php artisan db:show
 
           echo ""
-          echo "Executing Laravel scheduler..."
-          php artisan schedule:run -v
+          echo "Starting news pipeline..."
+          php artisan news:run-pipeline
 
           echo ""
-          echo "Laravel scheduler execution finished."
+          echo "=================================="
+          echo "LANKAPULSE AI PIPELINE FINISHED"
+          echo "=================================="
 
-      # 7. Completion
+      # 7. Success notification
       - name: Pipeline execution status
         if: success()
         run: |
           echo "=================================="
-          echo "LANKAPULSE AI SCHEDULER SUCCESS"
+          echo "LANKAPULSE AI AUTOMATION SUCCESS"
           echo "=================================="
-          echo "Scheduler completed without reported errors."
+          echo "Pipeline completed without reported errors."
 
+      # 8. Failure notification
       - name: Pipeline failure notification
         if: failure()
         run: |
-          echo "::error::LankaPulse AI scheduler encountered an error."
-          echo "Check the failed step above for details."
+          echo "::error::LankaPulse AI pipeline encountered an error."
+          echo "Check the failed step above."
