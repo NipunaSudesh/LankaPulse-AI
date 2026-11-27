@@ -4,7 +4,8 @@ use Illuminate\Support\Facades\Schedule;
 
 
 Schedule::command('news:run-pipeline')
-    ->hourly()
+    ->everyFiveMinutes()
+    ->timezone('Asia/Colombo')
     ->withoutOverlapping();
 // // Fetch Sri Lankan news every hour.
 // Schedule::command('news:fetch-sri-lanka')

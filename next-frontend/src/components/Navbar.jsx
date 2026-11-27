@@ -128,7 +128,7 @@ export default function Navbar() {
             </Link>
 
             {/* Desktop Search */}
-            <form
+            {/* <form
               onSubmit={handleSearch}
               role="search"
               className="hidden min-w-0 max-w-[360px] flex-1 md:block lg:mx-5"
@@ -152,12 +152,12 @@ export default function Navbar() {
                   Enter
                 </kbd>
               </div>
-            </form>
+            </form> */}
 
             {/* Desktop Navigation */}
             <nav
               aria-label="Main navigation"
-              className="hidden items-center gap-1 xl:flex"
+              className="hidden items-center gap-1 lg:flex"
             >
               {LINKS.map((link) => {
                 const active = isActive(link.href);
@@ -187,7 +187,7 @@ export default function Navbar() {
             <div className="flex shrink-0 items-center gap-1.5 min-[401px]:gap-2">
 
               {/* Mobile Search Icon - separate from menu */}
-              <button
+              {/* <button
                 type="button"
                 onClick={openMobileSearch}
                 aria-label={searchOpen ? "Close search" : "Open search"}
@@ -195,7 +195,7 @@ export default function Navbar() {
                 className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface text-text-main transition-all duration-300 hover:border-cyan-500/50 hover:bg-cyan-500/10 hover:text-cyan-500 dark:border-dark-border dark:bg-dark-surface dark:text-dark-text-main min-[401px]:h-10 min-[401px]:w-10 md:hidden"
               >
                 {searchOpen ? <FiX size={18} /> : <FiSearch size={18} />}
-              </button>
+              </button> */}
 
               {/* Theme Toggle */}
               <button
@@ -250,22 +250,22 @@ export default function Navbar() {
           </div>
 
           {/* Tablet Navigation */}
-          <div className="hidden items-center gap-2 pb-3 lg:flex xl:hidden">
-            {LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                aria-current={isActive(link.href) ? "page" : undefined}
-                className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
-                  isActive(link.href)
-                    ? "bg-cyan-500/10 text-cyan-600 dark:text-cyan-300"
-                    : "text-text-muted hover:bg-surface dark:text-dark-text-muted dark:hover:bg-dark-surface"
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </div>
+        {/* <div className="hidden items-center justify-center gap-2 pb-3 lg:flex xl:hidden">
+  {LINKS.map((link) => (
+    <Link
+      key={link.href}
+      href={link.href}
+      aria-current={isActive(link.href) ? "page" : undefined}
+      className={`shrink-0 whitespace-nowrap rounded-lg px-4 py-2 text-xs font-semibold transition ${
+        isActive(link.href)
+          ? "bg-cyan-500/10 text-cyan-600 dark:text-cyan-300"
+          : "text-text-muted hover:bg-surface dark:text-dark-text-muted dark:hover:bg-dark-surface"
+      }`}
+    >
+      {link.label}
+    </Link>
+  ))}
+</div> */}
         </div>
       </div>
 
