@@ -1,3 +1,4 @@
+
 <?php
 
 namespace App\Services;
@@ -15,7 +16,6 @@ class FacebookGraphicGenerator
     private const WIDTH = 1080;
     private const HEIGHT = 1350;
 
-    // Same palette as THEMES in the React page.
     private const THEMES = [
         'alert'   => ['from' => '#e11d2e', 'to' => '#6b0812', 'chip' => '#facc15'],
         'pulse'   => ['from' => '#0000e6', 'to' => '#020a5c', 'chip' => '#00ffff'],
@@ -32,8 +32,8 @@ class FacebookGraphicGenerator
         'y'            => 50,
     ];
 
-    // Put the font you use on the website first. It must be installed on the server.
     private const LATIN_FONT = "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+
     private const SINHALA_FONT = "'Noto Sans Sinhala', 'Iskoola Pota', 'Nirmala UI', sans-serif";
 
     public function generate(NewsArticle $article, array $options = []): string
@@ -46,16 +46,21 @@ class FacebookGraphicGenerator
 
         $path = $directory . '/article-' . $article->id . '-' . uniqid() . '.png';
 
-        $html = $this->buildHtml($article, $this->normalizeOptions($options));
+        $html = $this->buildHtml(
+            $article,
+            $this->normalizeOptions($options)
+        );
 
         try {
             Browsershot::html($html)
                 ->setNodeModulePath(base_path('node_modules'))
+                ->noSandbox()
                 ->windowSize(self::WIDTH, self::HEIGHT)
                 ->deviceScaleFactor(1)
                 ->setScreenshotType('png')
                 ->waitUntilNetworkIdle()
                 ->save($path);
+
         } catch (\Throwable $e) {
             throw new RuntimeException(
                 'Facebook graphic generation failed: ' . $e->getMessage(),
@@ -85,38 +90,36 @@ class FacebookGraphicGenerator
         ];
     }
 
-private function getSinhalaHeadlineSize(?string $titleSi): int
-{
-    $length = mb_strlen(trim($titleSi ?? ''), 'UTF-8');
+    private function getSinhalaHeadlineSize(?string $titleSi): int
+    {
+        $length = mb_strlen(trim($titleSi ?? ''), 'UTF-8');
 
-    // Short headlines
-    if ($length <= 60) {
-        return 52;
+        if ($length <= 60) {
+            return 52;
+        }
+
+        if ($length <= 80) {
+            return 49;
+        }
+
+        if ($length <= 100) {
+            return 46;
+        }
+
+        if ($length <= 120) {
+            return 43;
+        }
+
+        if ($length <= 140) {
+            return 40;
+        }
+
+        if ($length <= 160) {
+            return 37;
+        }
+
+        return 34;
     }
-
-    // Gradually reduce font size for longer headlines
-    if ($length <= 80) {
-        return 49;
-    }
-
-    if ($length <= 100) {
-        return 46;
-    }
-
-    if ($length <= 120) {
-        return 43;
-    }
-
-    if ($length <= 140) {
-        return 40;
-    }
-
-    if ($length <= 160) {
-        return 37;
-    }
-
-    return 34;
-}
 
     private function buildHtml(NewsArticle $article, array $o): string
     {
@@ -127,39 +130,44 @@ private function getSinhalaHeadlineSize(?string $titleSi): int
             ($article->published_at ?? now())->format('Y-m-d')
         );
 
-        // Theme colours come from the constant above, never from user input.
         $from = $o['theme']['from'];
         $to = $o['theme']['to'];
         $chip = $o['theme']['chip'];
 
-  $sinhalaSize = $this->getSinhalaHeadlineSize(
-    $article->title_si ?: $article->title
-);
+        $sinhalaSize = $this->getSinhalaHeadlineSize(
+            $article->title_si ?: $article->title
+        );
 
-$titleSiMax = $o['showEn'] ? 230 : 290;
+        $titleSiMax = $o['showEn'] ? 230 : 290;
 
         $latinFont = self::LATIN_FONT;
         $sinhalaFont = self::SINHALA_FONT;
 
-        // News photo (same behaviour as NewsPhoto in React: contain + position + zoom).
+        // News photo
         $imageUrl = trim((string) $article->image_url);
         $photoHtml = '';
 
         if ($imageUrl !== '' && filter_var($imageUrl, FILTER_VALIDATE_URL)) {
             $src = $this->escape($imageUrl);
+
             $photoHtml = sprintf(
                 '<img class="photo" src="%s" alt="" style="object-position:%s%% %s%%;transform:scale(%s);transform-origin:%s%% %s%%;">',
                 $src,
-                $o['x'], $o['y'], $o['zoom'], $o['x'], $o['y']
+                $o['x'],
+                $o['y'],
+                $o['zoom'],
+                $o['x'],
+                $o['y']
             );
         }
 
-        // Logo from the Laravel public directory, embedded as base64.
+        // Logo from Laravel public directory
         $logoHtml = '';
         $logoPath = public_path('LP_logo.png');
 
         if (file_exists($logoPath)) {
             $logoBase64 = base64_encode(file_get_contents($logoPath));
+
             $logoHtml = '<div class="logo-wrap"><div class="logo-box">'
                 . '<img src="data:image/png;base64,' . $logoBase64 . '" alt="LankaPulse AI">'
                 . '</div></div>';
@@ -193,7 +201,7 @@ html, body {
 
 body {
     font-family: {$latinFont};
-    line-height: 1.5;               /* Tailwind's default, keeps badge heights identical */
+    line-height: 1.5;
     background: #081326;
     color: #ffffff;
 }
@@ -206,7 +214,7 @@ body {
     background: #081326;
 }
 
-/* ---------- Header ---------- */
+/* Header */
 
 .header {
     position: absolute;
@@ -241,7 +249,7 @@ body {
     text-shadow: 0 0 30px rgba(255,255,255,.25);
 }
 
-/* ---------- Photo area ---------- */
+/* Photo area */
 
 .photo-area {
     position: absolute;
@@ -269,7 +277,7 @@ body {
     z-index: 2;
 }
 
-/* ---------- Brand badge on the photo ---------- */
+/* Brand badge */
 
 .photo-brand {
     position: absolute;
@@ -302,7 +310,7 @@ body {
 
 .logo-box {
     position: relative;
-    width: 62px;                    /* 52px logo + 4px padding + 1px border, each side */
+    width: 62px;
     height: 62px;
     padding: 4px;
     overflow: hidden;
@@ -328,9 +336,11 @@ body {
     color: #ffffff;
 }
 
-.brand-name span { color: #67e8f9; }
+.brand-name span {
+    color: #67e8f9;
+}
 
-/* ---------- Date badge ---------- */
+/* Date badge */
 
 .date {
     position: absolute;
@@ -345,7 +355,7 @@ body {
     letter-spacing: 0.025em;
 }
 
-/* ---------- Headline panel ---------- */
+/* Headline panel */
 
 .headline-panel {
     position: absolute;
@@ -429,6 +439,10 @@ HTML;
 
     private function escape(?string $value): string
     {
-        return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        return htmlspecialchars(
+            (string) $value,
+            ENT_QUOTES | ENT_SUBSTITUTE,
+            'UTF-8'
+        );
     }
 }
