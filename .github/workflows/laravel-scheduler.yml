@@ -32,7 +32,33 @@ jobs:
         with:
           ref: main
 
-      # 2. Setup PHP
+      # 2. Verify LankaPulse AI logo
+      - name: Verify Facebook graphic logo
+        run: |
+          set -euo pipefail
+
+          LOGO="public/LP_Logo.png"
+
+          echo "=================================="
+          echo "LANKAPULSE AI LOGO VERIFICATION"
+          echo "=================================="
+
+          if [[ ! -f "$LOGO" ]]; then
+            echo "::error::LP_Logo.png is missing from laravel-backend/public/"
+            echo "Available logo files:"
+            find public -maxdepth 2 -type f -iname '*logo*' || true
+            exit 1
+          fi
+
+          if [[ ! -r "$LOGO" ]]; then
+            echo "::error::LP_Logo.png is not readable."
+            exit 1
+          fi
+
+          echo "Logo found successfully."
+          ls -lh "$LOGO"
+
+      # 3. Setup PHP
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -40,7 +66,7 @@ jobs:
           extensions: mbstring, xml, curl, mysql, zip, bcmath, gd, intl
           coverage: none
 
-      # 3. Install Composer dependencies
+      # 4. Install Composer dependencies
       - name: Install Composer dependencies
         run: |
           set -euo pipefail
@@ -52,13 +78,13 @@ jobs:
             --optimize-autoloader \
             --no-progress
 
-      # 4. Setup Node.js for Browsershot
+      # 5. Setup Node.js for Browsershot
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
 
-      # 5. Install Puppeteer and Chrome
+      # 6. Install Puppeteer and Chrome
       - name: Install Puppeteer and Chrome
         run: |
           set -euo pipefail
@@ -69,7 +95,7 @@ jobs:
 
           echo "Puppeteer and Chrome installed successfully."
 
-      # 6. Install Sinhala fonts for Facebook graphics
+      # 7. Install Sinhala fonts for Facebook graphics
       - name: Install Sinhala fonts
         run: |
           set -euo pipefail
@@ -96,7 +122,7 @@ jobs:
 
           echo "Sinhala fonts installed successfully."
 
-      # 7. Validate environment configuration
+      # 8. Validate environment configuration
       - name: Validate environment configuration
         env:
           APP_KEY: ${{ secrets.APP_KEY }}
@@ -201,7 +227,7 @@ jobs:
 
           echo "Configuration validation completed."
 
-      # 8. Configure TiDB SSL certificate
+      # 9. Configure TiDB SSL certificate
       - name: Configure TiDB SSL certificate
         env:
           TIDB_CA_CERT: ${{ secrets.TIDB_CA_CERT }}
@@ -219,7 +245,7 @@ jobs:
 
           echo "TiDB SSL certificate configured."
 
-      # 9. Execute the complete news pipeline
+      # 10. Execute the complete news pipeline
       - name: Run LankaPulse AI pipeline
         env:
           APP_ENV: production
@@ -278,7 +304,7 @@ jobs:
           echo "LANKAPULSE AI PIPELINE FINISHED"
           echo "=================================="
 
-      # 10. Success notification
+      # 11. Success notification
       - name: Pipeline execution status
         if: success()
         run: |
@@ -287,7 +313,7 @@ jobs:
           echo "=================================="
           echo "Pipeline completed without reported errors."
 
-      # 11. Failure notification
+      # 12. Failure notification
       - name: Pipeline failure notification
         if: failure()
         run: |
